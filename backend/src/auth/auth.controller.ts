@@ -1,0 +1,57 @@
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { JwtGuard } from './guards/jwt.guard';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+
+import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+
+@ApiTags('Authentication')
+@Controller('api/auth')
+export class AuthController {
+  constructor(
+    private readonly authService: AuthService,
+  ) {}
+
+  @ApiOperation({
+    summary: 'Seed SuperAdmin',
+  })
+  @Post('seed')
+  async seed() {
+    return this.authService.createSuperAdmin();
+  }
+
+  @ApiOperation({
+    summary: 'Login using username and password',
+  })
+  @Post('login')
+  login(@Body() body: LoginDto) {
+    return this.authService.login(
+      body.username,
+      body.password,
+    );
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Create User',
+  })
+  @Post('create-user')
+  @UseGuards(JwtGuard)
+  createUser(
+    @Body() body: CreateUserDto,
+    @Req() req: any,
+  ) {
+    return this.authService.createUser(body, req.user);
+  }
+}
