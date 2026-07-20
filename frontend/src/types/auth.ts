@@ -3,12 +3,12 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface User {
+export interface LoginUser {
   id: number;
   username: string;
   email: string;
   name: string;
-  role: string;
+  role: UserRole;
   businessUnitId: number | null;
   companyId: number | null;
 }
@@ -16,6 +16,12 @@ export interface User {
 export interface LoginResponse {
   success: boolean;
   message: string;
-  user: User;
   token: string;
+  user: LoginUser;
 }
+
+export type UserRole =
+  | "superadmin"
+  | "bu-admin"
+  | "company-admin"
+  | "user";
