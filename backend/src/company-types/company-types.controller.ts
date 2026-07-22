@@ -14,23 +14,30 @@ import {
 } from '@nestjs/swagger';
 
 import { JwtGuard } from '../auth/guards/jwt.guard';
-import { CompanyTypesService } from './company-types.service';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+import { HasPermission } from '../auth/decorators/has-permission.decorator';
 
+import { CompanyTypesService } from './company-types.service';
 import { CreateCompanyTypeDto } from './dto/create-company-type.dto';
 
 @ApiTags('Company Types')
 @ApiBearerAuth()
 @Controller('api/company-types')
+@UseGuards(JwtGuard, PermissionGuard)
 export class CompanyTypesController {
   constructor(
     private readonly companyTypesService: CompanyTypesService,
   ) {}
 
+  // ==========================
+  // Create Company Type
+  // ==========================
+
+  @Post()
+  @HasPermission('company-types.add')
   @ApiOperation({
     summary: 'Create Company Type',
   })
-  @Post()
-  @UseGuards(JwtGuard)
   create(
     @Body() body: CreateCompanyTypeDto,
     @Req() req: any,
@@ -41,11 +48,15 @@ export class CompanyTypesController {
     );
   }
 
+  // ==========================
+  // Get Company Types
+  // ==========================
+
+  @Get()
+  @HasPermission('company-types.view')
   @ApiOperation({
     summary: 'Get All Company Types',
   })
-  @Get()
-  @UseGuards(JwtGuard)
   getAll() {
     return this.companyTypesService.getAll();
   }

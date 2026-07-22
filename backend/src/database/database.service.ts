@@ -8,6 +8,19 @@ import { initCompanyTypeModel } from './models/company-type.model';
 import { initBusinessUnitModel } from './models/business-unit.model';
 import { initCompanyModel } from './models/company.model';
 
+import { initRoleModel } from './models/role.model';
+import { initPermissionModel } from './models/permission.model';
+import { initRolePermissionModel } from './models/role-permission.model';
+import { initUserRoleModel } from './models/user-role.model';
+
+import { setupAuthAssociations } from './associations/auth.association';
+import { setupBusinessUnitAssociations } from './associations/business-unit.association';
+import { setupCompanyAssociations } from './associations/company.association';
+import { setupUserAssociations } from './associations/user.association';
+import { setupRbacAssociations } from './associations/rbac.association';
+
+import { seedSuperAdmin } from './seeder';
+import { seedPermissions } from './permission.seeder';
 dotenv.config();
 
 @Injectable()
@@ -19,6 +32,12 @@ export class DatabaseService implements OnModuleInit {
   public CompanyType: any;
   public BusinessUnit: any;
   public Company: any;
+
+  // RBAC
+  public Role: any;
+  public Permission: any;
+  public RolePermission: any;
+  public UserRole: any;
 
   async onModuleInit() {
     await this.initialize();
@@ -44,20 +63,38 @@ export class DatabaseService implements OnModuleInit {
       await this.sequelize.authenticate();
       console.log('✓ Database connected successfully');
 
+      // ==========================
       // Initialize Models
+      // ==========================
+
       this.User = initUserModel(this.sequelize);
       this.LoginToken = initLoginTokenModel(this.sequelize);
       this.CompanyType = initCompanyTypeModel(this.sequelize);
       this.BusinessUnit = initBusinessUnitModel(this.sequelize);
       this.Company = initCompanyModel(this.sequelize);
 
-      // Setup Relationships
+      // RBAC Models
+
+      this.Role = initRoleModel(this.sequelize);
+      this.Permission = initPermissionModel(this.sequelize);
+      this.RolePermission =
+        initRolePermissionModel(this.sequelize);
+      this.UserRole = initUserRoleModel(this.sequelize);
+
+      // ==========================
+      // Setup Associations
+      // ==========================
+
       this.setupRelationships();
 
-// Database schema is managed using Sequelize migrations.
+      // ==========================
+      // Seed Data
+      // ==========================
 
-      console.log('✓ Database schema synchronized');
-      console.log('✓ Models initialized successfully');
+      await seedSuperAdmin(this);
+      await seedPermissions(this);
+
+      console.log('✓ Database initialized successfully');
     } catch (error) {
       console.error('✗ Database connection failed:', error);
       throw error;
@@ -67,72 +104,28 @@ export class DatabaseService implements OnModuleInit {
   }
 
   private setupRelationships() {
-    // ==========================
-    // User <-> LoginToken
-    // ==========================
-    this.User.hasMany(this.LoginToken, {
-      foreignKey: 'userId',
-      as: 'loginTokens',
-    });
+    const models = {
+      User: this.User,
+      LoginToken: this.LoginToken,
+      CompanyType: this.CompanyType,
+      BusinessUnit: this.BusinessUnit,
+      Company: this.Company,
 
-    this.LoginToken.belongsTo(this.User, {
-      foreignKey: 'userId',
-      as: 'user',
-    });
+      Role: this.Role,
+      Permission: this.Permission,
+      RolePermission: this.RolePermission,
+      UserRole: this.UserRole,
+    };
 
-    // ==========================
-    // Business Unit
-    // ==========================
-    this.BusinessUnit.belongsTo(this.User, {
-      foreignKey: 'adminId',
-      as: 'admin',
-    });
+    setupAuthAssociations(models);
 
-    this.BusinessUnit.hasMany(this.Company, {
-      foreignKey: 'businessUnitId',
-      as: 'companies',
-    });
+    setupBusinessUnitAssociations(models);
 
-    this.BusinessUnit.hasMany(this.User, {
-      foreignKey: 'businessUnitId',
-      as: 'users',
-    });
+    setupCompanyAssociations(models);
 
-    // ==========================
-    // Company
-    // ==========================
-    this.Company.belongsTo(this.BusinessUnit, {
-      foreignKey: 'businessUnitId',
-      as: 'businessUnit',
-    });
+    setupUserAssociations(models);
 
-    this.Company.belongsTo(this.CompanyType, {
-      foreignKey: 'companyTypeId',
-      as: 'companyType',
-    });
-
-    this.Company.belongsTo(this.User, {
-      foreignKey: 'adminId',
-      as: 'admin',
-    });
-
-    this.Company.hasMany(this.User, {
-      foreignKey: 'companyId',
-      as: 'users',
-    });
-
-    // ==========================
-    // User
-    // ==========================
-    this.User.belongsTo(this.BusinessUnit, {
-      foreignKey: 'businessUnitId',
-      as: 'businessUnit',
-    });
-
-    this.User.belongsTo(this.Company, {
-      foreignKey: 'companyId',
-      as: 'company',
-    });
+    setupRbacAssociations(models);
   }
 
   getSequelize() {

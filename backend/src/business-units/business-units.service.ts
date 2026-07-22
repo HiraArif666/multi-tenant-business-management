@@ -1,10 +1,11 @@
 import {
   Injectable,
-  ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as bcrypt from 'bcrypt';
+import { Op } from 'sequelize';
 
 @Injectable()
 export class BusinessUnitsService {
@@ -13,15 +14,6 @@ export class BusinessUnitsService {
   ) {}
 
   async create(data: any, adminUser: any) {
-    console.log('Logged in user:', adminUser);
-
-    if (adminUser.role !== 'superadmin') {
-      throw new ForbiddenException(
-        'Only superadmin can create business units',
-      );
-    }
-
-    // Check duplicate username
     const existingUsername =
       await this.databaseService.User.findOne({
         where: {
@@ -35,7 +27,6 @@ export class BusinessUnitsService {
       );
     }
 
-    // Check duplicate email
     const existingEmail =
       await this.databaseService.User.findOne({
         where: {
@@ -49,62 +40,50 @@ export class BusinessUnitsService {
       );
     }
 
-    // Create Business Unit
     const businessUnit =
       await this.databaseService.BusinessUnit.create({
         name: data.name,
-        description: data.description || null,
         adminId: null,
         isActive: true,
-
-        // Audit Fields
         createdBy: adminUser.id,
         updatedBy: null,
         deletedBy: null,
       });
 
-// Hash Password
-const hashedPassword = await bcrypt.hash(
-  data.admin.password,
-  10,
-);
+    const hashedPassword = await bcrypt.hash(
+      data.admin.password,
+      10,
+    );
 
-// Create BU Admin
-const buAdmin =
-  await this.databaseService.User.create({
-    username: data.admin.username,
-    email: data.admin.email,
-    password: hashedPassword,
-    name: data.admin.name,
+    const buAdmin =
+      await this.databaseService.User.create({
+        username: data.admin.username,
+        email: data.admin.email,
+        password: hashedPassword,
+        name: data.admin.name,
+        role: 'bu-admin',
+        businessUnitId: businessUnit.id,
+        companyId: null,
+        isActive: true,
+        createdBy: adminUser.id,
+        updatedBy: null,
+        deletedBy: null,
+      });
 
-    role: 'bu-admin',
-
-    businessUnitId: businessUnit.id,
-    companyId: null,
-
-    isActive: true,
-
-    // Audit Fields
-    createdBy: adminUser.id,
-    updatedBy: null,
-    deletedBy: null,
-  });
-
-    // Update Business Unit Admin
-    await businessUnit.update({
-      adminId: buAdmin.id,
-
-      // Audit Fields
-      updatedBy: adminUser.id,
-    });
+    await businessUnit.update(
+      {
+        adminId: buAdmin.id,
+      },
+      {
+        silent: true,
+      },
+    );
 
     return {
       success: true,
       message:
         'Business Unit and BU Admin created successfully',
-
       businessUnit,
-
       admin: {
         id: buAdmin.id,
         username: buAdmin.username,
@@ -112,6 +91,212 @@ const buAdmin =
         name: buAdmin.name,
         role: buAdmin.role,
       },
+    };
+  }
+
+  async findAll(query: any, adminUser: any) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const where: any = {};
+
+    where.isActive =
+      query.status === 'false' ? false : true;
+
+    if (query.search) {
+      where.name = {
+        [Op.iLike]: `%${query.search}%`,
+      };
+    }
+
+    const { rows, count } =
+      await this.databaseService.BusinessUnit.findAndCountAll(
+        {
+          where,
+
+          attributes: {
+            include: [
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."createdBy")`,
+                  ),
+                'createdByName',
+              ],
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."updatedBy")`,
+                  ),
+                'updatedByName',
+              ],
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."deletedBy")`,
+                  ),
+                'deletedByName',
+              ],
+            ],
+          },
+
+          include: [
+            {
+              model: this.databaseService.User,
+              as: 'admin',
+              attributes: [
+                'id',
+                'name',
+                'username',
+                'email',
+              ],
+            },
+          ],
+
+          order: [['createdAt', 'DESC']],
+          limit,
+          offset,
+        },
+      );
+
+    return {
+      success: true,
+      data: rows,
+      total: count,
+      page,
+      limit,
+    };
+  }
+
+async findOne(id: number) {
+    const businessUnit =
+      await this.databaseService.BusinessUnit.findByPk(
+        id,
+        {
+          attributes: {
+            include: [
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."createdBy")`,
+                  ),
+                'createdByName',
+              ],
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."updatedBy")`,
+                  ),
+                'updatedByName',
+              ],
+              [
+                this.databaseService
+                  .getSequelize()
+                  .literal(
+                    `(SELECT name FROM users WHERE id = "BusinessUnit"."deletedBy")`,
+                  ),
+                'deletedByName',
+              ],
+            ],
+          },
+
+          include: [
+            {
+              model: this.databaseService.User,
+              as: 'admin',
+              attributes: [
+                'id',
+                'name',
+                'username',
+                'email',
+              ],
+            },
+          ],
+        },
+      );
+
+    if (!businessUnit) {
+      throw new BadRequestException(
+        'Business Unit not found',
+      );
+    }
+
+    return {
+      success: true,
+      data: businessUnit,
+    };
+  }
+
+  async update(
+    id: number,
+    data: any,
+    adminUser: any,
+  ) {
+    const businessUnit =
+      await this.databaseService.BusinessUnit.findByPk(
+        id,
+      );
+
+    if (!businessUnit) {
+      throw new BadRequestException(
+        'Business Unit not found',
+      );
+    }
+
+    await businessUnit.update({
+      name: data.name,
+      isActive:
+        data.isActive ??
+        businessUnit.isActive,
+      updatedBy: adminUser.id,
+      updatedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      message:
+        'Business Unit updated successfully',
+      data: businessUnit,
+    };
+  }
+
+  async remove(
+    id: number,
+    adminUser: any,
+  ) {
+    const businessUnit =
+      await this.databaseService.BusinessUnit.findByPk(
+        id,
+      );
+
+    if (!businessUnit) {
+      throw new NotFoundException(
+        'Business Unit not found',
+      );
+    }
+
+    if (!businessUnit.isActive) {
+      throw new BadRequestException(
+        'Inactive Business Units cannot be edited',
+      );
+    }
+
+    await businessUnit.update({
+      isActive: false,
+      deletedBy: adminUser.id,
+      deletedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      message:
+        'Business Unit deleted successfully',
     };
   }
 }

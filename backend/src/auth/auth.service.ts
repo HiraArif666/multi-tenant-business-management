@@ -10,8 +10,10 @@ import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class AuthService {
-  private readonly jwtSecret = 'your-secret-key-change-this';
-  private readonly jwtExpiry = '24h';
+private readonly jwtSecret = 'your-secret-key-change-this';
+
+private readonly normalExpiry = '8h';
+private readonly rememberExpiry = '30d';
 
   constructor(private databaseService: DatabaseService) {}
 
@@ -19,7 +21,7 @@ export class AuthService {
   async createSuperAdmin() {
     try {
       const existingAdmin = await this.databaseService.User.findOne({
-        where: { username: 'superadmin' },
+        where: { username: 'test' },
       });
 
       if (existingAdmin) {
@@ -34,13 +36,13 @@ export class AuthService {
         };
       }
 
-      const hashedPassword = await bcrypt.hash('admin123', 10);
+      const hashedPassword = await bcrypt.hash('1234', 10);
 
       const superAdmin = await this.databaseService.User.create({
-        username: 'superadmin',
-        email: 'superadmin@app.com',
+        username: 'test',
+        email: 'test@test.com',
         password: hashedPassword,
-        name: 'Super Admin',
+        name: 'Test User',
         role: 'superadmin',
         businessUnitId: null,
         companyId: null,
@@ -60,8 +62,8 @@ export class AuthService {
           role: superAdmin.role,
         },
         loginCredentials: {
-          username: 'superadmin',
-          password: 'admin123',
+          username: 'test',
+          password: '1234',
         },
       };
     } catch (error: any) {
@@ -75,211 +77,256 @@ export class AuthService {
   }
 
   // ✅ LOGIN
-  async login(username: string, password: string) {
-    try {
-      console.log('🔍 Login attempt:', username);
 
-      username = username?.trim();
-      password = password?.trim();
+async login(
+  username: string,
+  password: string,
+  rememberMe = false,
+) {
+  try {
+    username = username.trim();
+    password = password.trim();
 
-      const user = await this.databaseService.User.findOne({
-        where: { username },
-        raw: true,
-      });
+    const user = await this.databaseService.User.findOne({
+      where: { username },
+      raw: true,
+    });
 
-      console.log('👤 User found:', user?.username);
-
-      if (!user) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      const isPasswordValid = await bcrypt.compare(
-        password,
-        user.password,
-      );
-
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      const token = jwt.sign(
-        {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          businessUnitId: user.businessUnitId,
-          companyId: user.companyId,
-        },
-        this.jwtSecret,
-        {
-          expiresIn: this.jwtExpiry,
-        },
-      );
-
-      const expiresAt = new Date(
-        Date.now() + 24 * 60 * 60 * 1000,
-      );
-
-      await this.databaseService.LoginToken.create({
-        userId: user.id,
-        token,
-        expiresAt,
-      });
-
-      console.log('✓ Login successful');
-
-      return {
-        success: true,
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          businessUnitId: user.businessUnitId,
-          companyId: user.companyId,
-        },
-        token,
-      };
-    } catch (error: any) {
-      console.error('❌ Login error:', error.message);
-
+    if (!user) {
       throw new UnauthorizedException(
-        error.message || 'Login failed',
+        'Invalid credentials',
       );
     }
+
+    const valid = await bcrypt.compare(
+      password,
+      user.password,
+    );
+
+    if (!valid) {
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      );
+    }
+
+    const expiresIn = rememberMe
+      ? this.rememberExpiry
+      : this.normalExpiry;
+
+const token = jwt.sign(
+  {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    businessUnitId: user.businessUnitId,
+    companyId: user.companyId,
+  },
+  this.jwtSecret,
+  {
+expiresIn: '7d',  },
+);
+
+    const expiresAt = new Date();
+
+    if (rememberMe) {
+      expiresAt.setDate(
+        expiresAt.getDate() + 30,
+      );
+    } else {
+      expiresAt.setHours(
+        expiresAt.getHours() + 8,
+      );
+    }
+
+    await this.databaseService.LoginToken.create({
+      userId: user.id,
+      token,
+      expiresAt,
+      isRevoked: false,
+    });
+
+    return {
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        businessUnitId: user.businessUnitId,
+        companyId: user.companyId,
+      },
+    };
+  } catch (error: any) {
+    throw new UnauthorizedException(
+      error.message || 'Login failed',
+    );
+  }
+}
+
+//Logout
+async logout(token: string) {
+  const loginToken =
+    await this.databaseService.LoginToken.findOne({
+      where: {
+        token,
+        isRevoked: false,
+      },
+    });
+
+  if (!loginToken) {
+    return {
+      success: true,
+      message: 'Already logged out',
+    };
   }
 
+  await loginToken.update({
+    isRevoked: true,
+    expiresAt: new Date(),
+  });
+
+  return {
+    success: true,
+    message: 'Logout successful',
+  };
+}
+
+
   // ✅ CREATE USER
-  async createUser(userData: any, adminUser: any) {
-    try {
-      console.log('👤 Creating user by:', adminUser.username);
+async createUser(userData: any, adminUser: any) {
+  try {
+    console.log(
+      '👤 Creating user by:',
+      adminUser.username,
+    );
 
-      const validRoles = [
-        'superadmin',
-        'bu-admin',
-        'company-admin',
-      ];
+    const existingUserByUsername =
+      await this.databaseService.User.findOne({
+        where: {
+          username: userData.username,
+        },
+      });
 
-      if (!validRoles.includes(adminUser.role)) {
-        throw new ForbiddenException(
-          'Only admins can create users',
-        );
-      }
+    if (existingUserByUsername) {
+      throw new BadRequestException(
+        'Username already exists',
+      );
+    }
 
-      const existingUserByUsername =
-        await this.databaseService.User.findOne({
-          where: {
-            username: userData.username,
-          },
-        });
+    const existingUserByEmail =
+      await this.databaseService.User.findOne({
+        where: {
+          email: userData.email,
+        },
+      });
 
-      if (existingUserByUsername) {
-        throw new BadRequestException(
-          'Username already exists',
-        );
-      }
+    if (existingUserByEmail) {
+      throw new BadRequestException(
+        'Email already exists',
+      );
+    }
 
-      const existingUserByEmail =
-        await this.databaseService.User.findOne({
-          where: {
-            email: userData.email,
-          },
-        });
-
-      if (existingUserByEmail) {
-        throw new BadRequestException(
-          'Email already exists',
-        );
-      }
-
-      let finalBusinessUnitId = userData.businessUnitId;
-      let finalCompanyId = userData.companyId;
-
-      if (adminUser.role === 'bu-admin') {
-        if (
-          userData.businessUnitId &&
-          userData.businessUnitId !==
-            adminUser.businessUnitId
-        ) {
-          throw new ForbiddenException(
-            'BU-Admin can only create users in their own BusinessUnit',
-          );
-        }
-
-        finalBusinessUnitId = adminUser.businessUnitId;
-      }
-
-      if (adminUser.role === 'company-admin') {
-        if (
-          userData.companyId &&
-          userData.companyId !== adminUser.companyId
-        ) {
-          throw new ForbiddenException(
-            'Company-Admin can only create users in their own company',
-          );
-        }
-
-        finalBusinessUnitId = adminUser.businessUnitId;
-        finalCompanyId = adminUser.companyId;
-      }
-
-      const hashedPassword = await bcrypt.hash(
+    const hashedPassword =
+      await bcrypt.hash(
         userData.password,
         10,
       );
 
-      const user = await this.databaseService.User.create({
+    const user =
+      await this.databaseService.User.create({
         username: userData.username,
         email: userData.email,
         password: hashedPassword,
         name: userData.name,
+
+        // Temporary until role column is removed
         role: userData.role || 'user',
-        businessUnitId: finalBusinessUnitId || null,
-        companyId: finalCompanyId || null,
+
+        businessUnitId:
+          userData.businessUnitId || null,
+
+        companyId:
+          userData.companyId || null,
+
         isActive: true,
 
-        // Audit Fields
         createdBy: adminUser.id,
         updatedBy: null,
         deletedBy: null,
       });
 
-      console.log('✓ User created:', user.username);
+    // ==========================
+    // Assign Roles
+    // ==========================
 
-      return {
-        success: true,
-        message: 'User created successfully',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          businessUnitId: user.businessUnitId,
-          companyId: user.companyId,
-        },
-      };
-    } catch (error: any) {
-      console.error(
-        '❌ Create user error:',
-        error.message,
-      );
-
-      throw new BadRequestException(
-        error.message || 'Failed to create user',
-      );
+    if (
+      userData.roleIds &&
+      Array.isArray(userData.roleIds)
+    ) {
+      for (const roleId of userData.roleIds) {
+        await this.databaseService.UserRole.create({
+          userId: user.id,
+          roleId,
+        });
+      }
     }
+
+    console.log(
+      '✓ User created:',
+      user.username,
+    );
+
+    return {
+      success: true,
+      message: 'User created successfully',
+      user,
+    };
+  } catch (error: any) {
+    console.error(
+      '❌ Create user error:',
+      error.message,
+    );
+
+    throw new BadRequestException(
+      error.message || 'Failed to create user',
+    );
   }
+}
 
   // ✅ VALIDATE TOKEN
-  async validateToken(token: string) {
-    try {
-      return jwt.verify(token, this.jwtSecret);
-    } catch {
-      throw new UnauthorizedException('Invalid token');
+async validateToken(token: string) {
+  try {
+    const loginToken =
+      await this.databaseService.LoginToken.findOne({
+        where: {
+          token,
+          isRevoked: false,
+        },
+      });
+
+    if (!loginToken) {
+      throw new UnauthorizedException(
+        'Token revoked',
+      );
     }
+
+    if (
+      new Date(loginToken.expiresAt) <
+      new Date()
+    ) {
+      throw new UnauthorizedException(
+        'Token expired',
+      );
+    }
+
+    return jwt.verify(token, this.jwtSecret);
+  } catch {
+    throw new UnauthorizedException(
+      'Invalid token',
+    );
   }
+}
 }

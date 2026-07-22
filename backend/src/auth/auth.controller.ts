@@ -5,8 +5,10 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
+
 import {
   ApiTags,
   ApiOperation,
@@ -39,7 +41,19 @@ export class AuthController {
     return this.authService.login(
       body.username,
       body.password,
+      body.rememberMe,
     );
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Logout',
+  })
+  @Post('logout')
+  @UseGuards(JwtGuard)
+  logout(@Req() req: any) {
+    const token = req.headers.authorization.split(' ')[1];
+    return this.authService.logout(token);
   }
 
   @ApiBearerAuth()

@@ -14,36 +14,47 @@ import {
 } from '@nestjs/swagger';
 
 import { JwtGuard } from '../auth/guards/jwt.guard';
-import { CompaniesService } from './companies.service';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+import { HasPermission } from '../auth/decorators/has-permission.decorator';
 
+import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 
 @ApiTags('Companies')
 @ApiBearerAuth()
 @Controller('api/companies')
+@UseGuards(JwtGuard, PermissionGuard)
 export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
   ) {}
 
+  // ==========================
+  // Get Companies
+  // ==========================
+
+  @Get()
+  @HasPermission('companies.view')
   @ApiOperation({
     summary:
       'Get Companies according to logged-in user',
   })
-  @Get()
-  @UseGuards(JwtGuard)
   getCompanies(@Req() req: any) {
     return this.companiesService.getCompanies(
       req.user,
     );
   }
 
+  // ==========================
+  // Create Company
+  // ==========================
+
+  @Post()
+  @HasPermission('companies.add')
   @ApiOperation({
     summary:
       'Create Company with Company Admin',
   })
-  @Post()
-  @UseGuards(JwtGuard)
   create(
     @Body() body: CreateCompanyDto,
     @Req() req: any,

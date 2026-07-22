@@ -1,6 +1,5 @@
 import {
   Injectable,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
@@ -10,11 +9,6 @@ export class CompanyTypesService {
   constructor(private databaseService: DatabaseService) {}
 
   async create(data: any, adminUser: any) {
-    if (adminUser.role !== 'superadmin') {
-      throw new ForbiddenException(
-        'Only superadmin can create company types',
-      );
-    }
 
     const existing = await this.databaseService.CompanyType.findOne({
       where: {
