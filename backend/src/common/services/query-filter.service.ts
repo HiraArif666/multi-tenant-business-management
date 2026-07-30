@@ -1,10 +1,16 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class QueryFilterService {
   getCompanyFilter(user: any) {
     if (user.role === 'superadmin') {
-      return {};
+      if (!user.selectedBusinessUnitId) {
+        throw new BadRequestException(
+          'Please select a Business Unit first',
+        );
+      }
+
+      return { businessUnitId: user.selectedBusinessUnitId };
     }
 
     if (user.role === 'bu-admin') {

@@ -6,19 +6,26 @@ import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 
 import { PermissionGuard } from '../auth/guards/permission.guard';
+import { DatabaseModule } from '../database/database.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  controllers: [RolesController],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+  ],
+
+  controllers: [
+    RolesController,
+  ],
 
   providers: [
     RolesService,
-    DatabaseService,
     PermissionGuard,
   ],
 
   exports: [
     RolesService,
-    PermissionGuard,
   ],
 })
 export class RolesModule {}

@@ -1,7 +1,12 @@
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import {
+  DataTypes,
+  Model,
+  Sequelize,
+} from 'sequelize';
 
 export class Role extends Model {
   declare id: number;
+
   declare name: string;
   declare description: string | null;
 
@@ -11,12 +16,14 @@ export class Role extends Model {
   declare isSystem: boolean;
   declare isActive: boolean;
 
+  // Audit
   declare createdBy: number | null;
   declare updatedBy: number | null;
   declare deletedBy: number | null;
 
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
+  declare readonly deletedAt: Date | null;
 }
 
 export function initRoleModel(
@@ -33,7 +40,6 @@ export function initRoleModel(
       name: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
       },
 
       description: {
@@ -53,11 +59,13 @@ export function initRoleModel(
 
       isSystem: {
         type: DataTypes.BOOLEAN,
+        allowNull: false,
         defaultValue: false,
       },
 
       isActive: {
         type: DataTypes.BOOLEAN,
+        allowNull: false,
         defaultValue: true,
       },
 
@@ -78,8 +86,25 @@ export function initRoleModel(
     },
     {
       sequelize,
+      modelName: 'Role',
       tableName: 'roles',
+
       timestamps: true,
+
+      // Soft Delete
+      paranoid: true,
+
+      underscored: false,
+
+      indexes: [
+        {
+          unique: true,
+          fields: [
+            'name',
+            'businessUnitId',
+          ],
+        },
+      ],
     },
   );
 

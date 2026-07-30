@@ -45,9 +45,11 @@ export class CreateRoleDto {
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiProperty({
-    example: [1, 2, 3, 4],
-  })
-  @IsArray()
-  permissionIds!: number[];
+@ApiProperty({
+  required: false,
+  example: [],
+})
+@IsOptional()
+@IsArray()
+permissionIds?: number[];
 }

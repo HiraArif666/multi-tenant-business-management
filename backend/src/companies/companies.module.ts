@@ -6,7 +6,8 @@ import { QueryFilterService } from '../common/services/query-filter.service';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [CompaniesController],  // ✅ Controllers
-  providers: [CompaniesService, QueryFilterService],  // ✅ Providers
+  controllers: [CompaniesController],
+  providers: [CompaniesService, QueryFilterService],
+  exports: [CompaniesService],
 })
 export class CompaniesModule {}

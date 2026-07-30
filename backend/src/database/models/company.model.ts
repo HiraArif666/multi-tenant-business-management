@@ -12,6 +12,11 @@ export class Company extends Model {
   declare companyTypeId: number;
   declare adminId: number | null;
   declare isActive: boolean;
+  declare phone: string | null;
+  declare email: string | null;
+  declare address: string | null;
+  declare website: string | null;
+  declare logo: string | null;
 
   // ==========================
   // Audit Fields
@@ -60,7 +65,32 @@ export function initCompanyModel(
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      
+      phone: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
 
+      email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      address: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      website: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      logo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      
       isActive: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

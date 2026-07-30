@@ -4,13 +4,14 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+
 import * as jwt from 'jsonwebtoken';
 import { DatabaseService } from '../../database/database.service';
 
 @Injectable()
 export class JwtGuard implements CanActivate {
   private readonly jwtSecret =
-    'your-secret-key-change-this';
+    process.env.JWT_SECRET || 'your-secret-key-change-this';
 
   constructor(
     private readonly databaseService: DatabaseService,
@@ -31,7 +32,11 @@ export class JwtGuard implements CanActivate {
       );
     }
 
-    const token = authHeader.split(' ')[1];
+    const token =
+      authHeader.replace(
+        'Bearer ',
+        '',
+      );
 
     try {
       const loginToken =
@@ -49,8 +54,7 @@ export class JwtGuard implements CanActivate {
       }
 
       if (
-        new Date(loginToken.expiresAt) <
-        new Date()
+        new Date(loginToken.expiresAt) < new Date()
       ) {
         throw new UnauthorizedException(
           'Token expired',
@@ -60,9 +64,28 @@ export class JwtGuard implements CanActivate {
       const decoded = jwt.verify(
         token,
         this.jwtSecret,
-      );
+      ) as any;
 
-      request.user = decoded;
+      const dbUser =
+        await this.databaseService.User.findOne({
+          where: {
+            id: decoded.id,
+          },
+        });
+
+      if (!dbUser) {
+        throw new UnauthorizedException(
+          'User not found',
+        );
+      }
+
+      if (!dbUser.isActive) {
+        throw new UnauthorizedException(
+          'User is inactive',
+        );
+      }
+
+      request.user = dbUser;
 
       return true;
     } catch {

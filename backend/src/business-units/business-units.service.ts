@@ -172,7 +172,7 @@ export class BusinessUnitsService {
     };
   }
 
-async findOne(id: number) {
+async findOne(id: number, user: any) {
     const businessUnit =
       await this.databaseService.BusinessUnit.findByPk(
         id,
@@ -299,4 +299,62 @@ async findOne(id: number) {
         'Business Unit deleted successfully',
     };
   }
-}
+
+async selectBusinessUnit(
+  id: number,
+  currentUser: any,
+) {
+  console.log("SELECT BUSINESS UNIT SERVICE HIT");
+  console.log("Current User:", currentUser.id);
+console.log("Business Unit:", id);
+  if (currentUser.role !== 'superadmin') {
+    throw new BadRequestException(
+      'Only Superadmin can select Business Unit',
+    );
+  }
+
+  const businessUnit =
+    await this.databaseService.BusinessUnit.findByPk(
+      id,
+    );
+
+  if (!businessUnit) {
+    throw new NotFoundException(
+      'Business Unit not found',
+    );
+  }
+
+  await this.databaseService.User.update(
+    {
+      selectedBusinessUnitId: businessUnit.id,
+      selectedCompanyId: null,
+    },
+    {
+      where: {
+        id: currentUser.id,
+      },
+    },
+  );
+
+
+console.log('========== SELECT BUSINESS UNIT ==========');
+console.log('Current User ID:', currentUser.id);
+console.log('Business Unit ID:', id);
+
+
+  const updatedUser =
+    await this.databaseService.User.findByPk(
+      currentUser.id,
+    );
+
+  return {
+    success: true,
+    message: 'Business Unit selected successfully',
+    data: {
+      id: businessUnit.id,
+      name: businessUnit.name,
+    },
+    user: updatedUser,
+  };
+  
+}}

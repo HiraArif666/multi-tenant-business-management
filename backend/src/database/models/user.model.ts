@@ -6,16 +6,27 @@ import {
 
 export class User extends Model {
   declare id: number;
+
   declare username: string;
   declare email: string;
   declare password: string;
   declare name: string | null;
+
+  declare profilePicture: string | null;
+
+  // Temporary until RBAC fully replaces it
   declare role: string;
+
   declare businessUnitId: number | null;
   declare companyId: number | null;
+
+  // Currently selected context
+  declare selectedBusinessUnitId: number | null;
+  declare selectedCompanyId: number | null;
+
   declare isActive: boolean;
 
-  // Audit Fields
+  // Audit
   declare createdBy: number | null;
   declare updatedBy: number | null;
   declare deletedBy: number | null;
@@ -58,6 +69,11 @@ export function initUserModel(
         allowNull: true,
       },
 
+      profilePicture: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
       role: {
         type: DataTypes.ENUM(
           'superadmin',
@@ -79,15 +95,21 @@ export function initUserModel(
         allowNull: true,
       },
 
+      selectedBusinessUnitId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+
+      selectedCompanyId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+
       isActive: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
       },
-
-      // ==========================
-      // Audit Fields
-      // ==========================
 
       createdBy: {
         type: DataTypes.INTEGER,
@@ -109,10 +131,7 @@ export function initUserModel(
       modelName: 'User',
       tableName: 'users',
       timestamps: true,
-
-      // Enables deletedAt (Soft Delete)
       paranoid: true,
-
       underscored: false,
     },
   );

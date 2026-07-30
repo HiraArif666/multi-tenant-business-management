@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
 
 import App from "./App";
+import "./index.css";
 
 const queryClient = new QueryClient();
 
@@ -14,7 +15,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       theme={{
         token: {
           colorPrimary: "#1677ff",
-          borderRadius: 8,
+          borderRadius: 0,
+          padding: 0,
         },
       }}
     >

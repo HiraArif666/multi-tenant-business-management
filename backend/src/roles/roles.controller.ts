@@ -19,16 +19,20 @@ import {
 } from '@nestjs/swagger';
 
 import { RolesService } from './roles.service';
+import { UpdateRoleStatusDto } from './dto/update-role-status.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+import { HasPermission } from '../auth/decorators/has-permission.decorator';
 
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
+import { BusinessUnitGuard } from '../business-units/guards/business-unit.guard';
 
 @ApiTags('Roles')
 @ApiBearerAuth()
 @Controller('api/roles')
-@UseGuards(JwtGuard)
+@UseGuards(JwtGuard, PermissionGuard, BusinessUnitGuard)
 export class RolesController {
   constructor(
     private readonly rolesService: RolesService,
@@ -39,6 +43,7 @@ export class RolesController {
   // ==========================
 
   @Post()
+  @HasPermission('staff.roles.add')
   @ApiOperation({
     summary: 'Create Role',
   })
@@ -57,6 +62,7 @@ export class RolesController {
   // ==========================
 
   @Get()
+  @HasPermission('staff.roles.view')
   @ApiOperation({
     summary: 'Get Roles',
   })
@@ -75,6 +81,7 @@ export class RolesController {
   // ==========================
 
   @Get(':id')
+  @HasPermission('staff.roles.view')
   @ApiOperation({
     summary: 'Get Role By Id',
   })
@@ -93,6 +100,7 @@ export class RolesController {
   // ==========================
 
   @Put(':id')
+  @HasPermission('staff.roles.edit')
   @ApiOperation({
     summary: 'Update Role',
   })
@@ -108,11 +116,31 @@ export class RolesController {
     );
   }
 
+
+
+  @Put(':id/status')
+@HasPermission('staff.roles.edit')
+@ApiOperation({
+  summary: 'Update Role Status',
+})
+updateStatus(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() body: UpdateRoleStatusDto,
+  @Req() req: any,
+) {
+  return this.rolesService.updateStatus(
+    id,
+    body.isActive,
+    req.user,
+  );
+}
+
   // ==========================
   // Delete Role
   // ==========================
 
   @Delete(':id')
+  @HasPermission('staff.roles.delete')
   @ApiOperation({
     summary: 'Delete Role',
   })
@@ -126,66 +154,74 @@ export class RolesController {
     );
   }
 
-// ==========================
-// Get Role Permissions
-// ==========================
+  // ==========================
+  // Get Role Permissions
+  // ==========================
 
-@Get(':id/permissions')
-@ApiOperation({
-  summary: 'Get Role Permissions',
-})
-getRolePermissions(
+  @Get(':id/permissions')
+  @HasPermission('staff.roles.view')
+  @ApiOperation({
+    summary: 'Get Role Permissions',
+  })
+ getRolePermissions(
   @Param('id', ParseIntPipe) id: number,
+  @Req() req: any,
 ) {
   return this.rolesService.getRolePermissions(
     id,
+    req.user,
   );
 }
 
-// ==========================
-// Assign Permissions
-// ==========================
+  // ==========================
+  // Assign Permissions
+  // ==========================
 
-@Post(':id/permissions')
-@ApiOperation({
-  summary: 'Assign Permissions To Role',
-})
+  @Post(':id/permissions')
+  @HasPermission('staff.roles.edit')
+  @ApiOperation({
+    summary: 'Assign Permissions To Role',
+  })
 assignPermissions(
   @Param('id', ParseIntPipe) id: number,
   @Body() body: AssignPermissionsDto,
+  @Req() req: any,
 ) {
   return this.rolesService.assignPermissions(
     id,
     body.permissionIds,
+    req.user,
   );
 }
 
-// ==========================
-// Remove Permission
-// ==========================
+  // ==========================
+  // Remove Permission
+  // ==========================
 
-@Delete(':roleId/permissions/:permissionId')
-@ApiOperation({
-  summary: 'Remove Permission From Role',
-})
+  @Delete(':roleId/permissions/:permissionId')
+  @HasPermission('staff.roles.edit')
+  @ApiOperation({
+    summary: 'Remove Permission From Role',
+  })
 removePermission(
-  @Param('roleId', ParseIntPipe)
-  roleId: number,
-
-  @Param('permissionId', ParseIntPipe)
-  permissionId: number,
+  @Param('roleId', ParseIntPipe) roleId: number,
+  @Param('permissionId', ParseIntPipe) permissionId: number,
+  @Req() req: any,
 ) {
   return this.rolesService.removePermission(
     roleId,
     permissionId,
+    req.user,
   );
 }
+  
 
   // ==========================
-  // Get Permissions
+  // Get All Permissions
   // ==========================
 
   @Get('/permissions/all')
+  @HasPermission('staff.roles.view')
   @ApiOperation({
     summary: 'Get All Permissions',
   })
@@ -193,3 +229,5 @@ removePermission(
     return this.rolesService.getPermissions();
   }
 }
+  
+

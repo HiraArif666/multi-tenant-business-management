@@ -142,6 +142,137 @@ export async function seedPermissions(
       permissionKey: 'staff.roles.delete',
     },
 
+    // Master Data -> Vendor
+    {
+      module: 'Master Data',
+      subModule: 'Vendor',
+      action: 'View',
+      permissionKey: 'master-data.vendor.view',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Vendor',
+      action: 'Add',
+      permissionKey: 'master-data.vendor.add',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Vendor',
+      action: 'Edit',
+      permissionKey: 'master-data.vendor.edit',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Vendor',
+      action: 'Delete',
+      permissionKey: 'master-data.vendor.delete',
+    },
+
+    // Master Data -> Supplier
+    {
+      module: 'Master Data',
+      subModule: 'Supplier',
+      action: 'View',
+      permissionKey: 'master-data.supplier.view',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Supplier',
+      action: 'Add',
+      permissionKey: 'master-data.supplier.add',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Supplier',
+      action: 'Edit',
+      permissionKey: 'master-data.supplier.edit',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Supplier',
+      action: 'Delete',
+      permissionKey: 'master-data.supplier.delete',
+    },
+
+    // Master Data -> Contractor
+    {
+      module: 'Master Data',
+      subModule: 'Contractor',
+      action: 'View',
+      permissionKey: 'master-data.contractor.view',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Contractor',
+      action: 'Add',
+      permissionKey: 'master-data.contractor.add',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Contractor',
+      action: 'Edit',
+      permissionKey: 'master-data.contractor.edit',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Contractor',
+      action: 'Delete',
+      permissionKey: 'master-data.contractor.delete',
+    },
+
+    // Master Data -> Consultant
+    {
+      module: 'Master Data',
+      subModule: 'Consultant',
+      action: 'View',
+      permissionKey: 'master-data.consultant.view',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Consultant',
+      action: 'Add',
+      permissionKey: 'master-data.consultant.add',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Consultant',
+      action: 'Edit',
+      permissionKey: 'master-data.consultant.edit',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Consultant',
+      action: 'Delete',
+      permissionKey: 'master-data.consultant.delete',
+    },
+
+    // Master Data -> Customer
+    {
+      module: 'Master Data',
+      subModule: 'Customer',
+      action: 'View',
+      permissionKey: 'master-data.customer.view',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Customer',
+      action: 'Add',
+      permissionKey: 'master-data.customer.add',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Customer',
+      action: 'Edit',
+      permissionKey: 'master-data.customer.edit',
+    },
+    {
+      module: 'Master Data',
+      subModule: 'Customer',
+      action: 'Delete',
+      permissionKey: 'master-data.customer.delete',
+    },
+    
+
     // Profile
     {
       module: 'Profile',

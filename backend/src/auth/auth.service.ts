@@ -6,57 +6,77 @@ import {
 } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
+import { Op } from 'sequelize';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class AuthService {
-private readonly jwtSecret = 'your-secret-key-change-this';
+  private readonly jwtSecret =
+    process.env.JWT_SECRET || 'your-secret-key-change-this';
 
-private readonly normalExpiry = '8h';
-private readonly rememberExpiry = '30d';
+  private readonly normalExpiry = '8h';
+  private readonly rememberExpiry = '30d';
 
-  constructor(private databaseService: DatabaseService) {}
+  constructor(
+    private databaseService: DatabaseService,
+  ) {}
 
-  // ✅ SEED SUPERADMIN
+  // =====================================
+  // Seed Super Admin
+  // =====================================
+
   async createSuperAdmin() {
     try {
-      const existingAdmin = await this.databaseService.User.findOne({
-        where: { username: 'test' },
-      });
+      const existingAdmin =
+        await this.databaseService.User.findOne({
+          where: {
+            username: 'test',
+          },
+        });
 
       if (existingAdmin) {
         return {
           success: false,
-          message: 'Superadmin already exists',
+          message:
+            'Superadmin already exists',
           user: {
-            username: existingAdmin.username,
+            username:
+              existingAdmin.username,
             email: existingAdmin.email,
             role: existingAdmin.role,
           },
         };
       }
 
-      const hashedPassword = await bcrypt.hash('1234', 10);
+      const hashedPassword =
+        await bcrypt.hash('1234', 10);
 
-      const superAdmin = await this.databaseService.User.create({
-        username: 'test',
-        email: 'test@test.com',
-        password: hashedPassword,
-        name: 'Test User',
-        role: 'superadmin',
-        businessUnitId: null,
-        companyId: null,
-        isActive: true,
-      });
+      const superAdmin =
+        await this.databaseService.User.create({
+          username: 'test',
+          email: 'test@test.com',
+          password: hashedPassword,
+          name: 'Test User',
 
-      console.log('✓ Superadmin created');
+          role: 'superadmin',
+
+          businessUnitId: null,
+          selectedBusinessUnitId: null,
+
+          companyId: null,
+          selectedCompanyId: null,
+
+          isActive: true,
+        });
 
       return {
         success: true,
-        message: 'Superadmin created successfully',
+        message:
+          'Superadmin created successfully',
         user: {
           id: superAdmin.id,
-          username: superAdmin.username,
+          username:
+            superAdmin.username,
           email: superAdmin.email,
           name: superAdmin.name,
           role: superAdmin.role,
@@ -67,8 +87,6 @@ private readonly rememberExpiry = '30d';
         },
       };
     } catch (error: any) {
-      console.error('❌ Seed error:', error.message);
-
       return {
         success: false,
         message: error.message,
@@ -76,21 +94,25 @@ private readonly rememberExpiry = '30d';
     }
   }
 
-  // ✅ LOGIN
+  // =====================================
+  // LOGIN
+  // =====================================
 
-async login(
-  username: string,
-  password: string,
-  rememberMe = false,
-) {
-  try {
+  async login(
+    username: string,
+    password: string,
+    rememberMe = false,
+  ) {
     username = username.trim();
     password = password.trim();
 
-    const user = await this.databaseService.User.findOne({
-      where: { username },
-      raw: true,
-    });
+    const user =
+      await this.databaseService.User.findOne({
+        where: {
+          username,
+        },
+        raw: true,
+      });
 
     if (!user) {
       throw new UnauthorizedException(
@@ -98,12 +120,13 @@ async login(
       );
     }
 
-    const valid = await bcrypt.compare(
-      password,
-      user.password,
-    );
+    const validPassword =
+      await bcrypt.compare(
+        password,
+        user.password,
+      );
 
-    if (!valid) {
+    if (!validPassword) {
       throw new UnauthorizedException(
         'Invalid credentials',
       );
@@ -113,18 +136,27 @@ async login(
       ? this.rememberExpiry
       : this.normalExpiry;
 
-const token = jwt.sign(
-  {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    businessUnitId: user.businessUnitId,
-    companyId: user.companyId,
-  },
-  this.jwtSecret,
-  {
-expiresIn: '7d',  },
-);
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+
+        role: user.role,
+
+        businessUnitId: user.businessUnitId,
+        selectedBusinessUnitId:
+          user.selectedBusinessUnitId,
+
+        companyId: user.companyId,
+        selectedCompanyId:
+          user.selectedCompanyId,
+      },
+      this.jwtSecret,
+      {
+        expiresIn,
+      },
+    );
 
     const expiresAt = new Date();
 
@@ -145,160 +177,108 @@ expiresIn: '7d',  },
       isRevoked: false,
     });
 
+    const userRoles =
+      await this.databaseService.UserRole.findAll({
+        where: {
+          userId: user.id,
+        },
+        include: [
+          {
+            model:
+              this.databaseService.Role,
+            as: 'role',
+            attributes: [
+              'id',
+              'name',
+            ],
+          },
+        ],
+      });
+
+    const roleIds = userRoles.map(
+      (x: any) => x.roleId,
+    );
+
+    let permissions: string[] = [];
+
+    if (roleIds.length) {
+      const rolePermissions =
+        await this.databaseService.RolePermission.findAll(
+          {
+            where: {
+              roleId: roleIds,
+            },
+            include: [
+              {
+                model:
+                  this.databaseService.Permission,
+                as: 'permission',
+                attributes: [
+                  'permissionKey',
+                ],
+              },
+            ],
+          },
+        );
+
+      permissions = Array.from(
+        new Set(
+          rolePermissions
+            .map(
+              (x: any) =>
+                x.permission
+                  ?.permissionKey,
+            )
+            .filter(Boolean),
+        ),
+      );
+    }
+
     return {
       success: true,
       message: 'Login successful',
+
       token,
-      user: {
+
+ user: {
         id: user.id,
         username: user.username,
         email: user.email,
         name: user.name,
+
         role: user.role,
-        businessUnitId: user.businessUnitId,
-        companyId: user.companyId,
-      },
-    };
-  } catch (error: any) {
-    throw new UnauthorizedException(
-      error.message || 'Login failed',
-    );
-  }
-}
 
-//Logout
-async logout(token: string) {
-  const loginToken =
-    await this.databaseService.LoginToken.findOne({
-      where: {
-        token,
-        isRevoked: false,
-      },
-    });
-
-  if (!loginToken) {
-    return {
-      success: true,
-      message: 'Already logged out',
-    };
-  }
-
-  await loginToken.update({
-    isRevoked: true,
-    expiresAt: new Date(),
-  });
-
-  return {
-    success: true,
-    message: 'Logout successful',
-  };
-}
-
-
-  // ✅ CREATE USER
-async createUser(userData: any, adminUser: any) {
-  try {
-    console.log(
-      '👤 Creating user by:',
-      adminUser.username,
-    );
-
-    const existingUserByUsername =
-      await this.databaseService.User.findOne({
-        where: {
-          username: userData.username,
-        },
-      });
-
-    if (existingUserByUsername) {
-      throw new BadRequestException(
-        'Username already exists',
-      );
-    }
-
-    const existingUserByEmail =
-      await this.databaseService.User.findOne({
-        where: {
-          email: userData.email,
-        },
-      });
-
-    if (existingUserByEmail) {
-      throw new BadRequestException(
-        'Email already exists',
-      );
-    }
-
-    const hashedPassword =
-      await bcrypt.hash(
-        userData.password,
-        10,
-      );
-
-    const user =
-      await this.databaseService.User.create({
-        username: userData.username,
-        email: userData.email,
-        password: hashedPassword,
-        name: userData.name,
-
-        // Temporary until role column is removed
-        role: userData.role || 'user',
+        profilePicture: user.profilePicture,
 
         businessUnitId:
-          userData.businessUnitId || null,
+          user.businessUnitId,
+
+        selectedBusinessUnitId:
+          user.selectedBusinessUnitId,
 
         companyId:
-          userData.companyId || null,
+          user.companyId,
 
-        isActive: true,
+        selectedCompanyId:
+          user.selectedCompanyId,
+      },
 
-        createdBy: adminUser.id,
-        updatedBy: null,
-        deletedBy: null,
-      });
+      roles: userRoles.map(
+        (x: any) => ({
+          id: x.role.id,
+          name: x.role.name,
+        }),
+      ),
 
-    // ==========================
-    // Assign Roles
-    // ==========================
-
-    if (
-      userData.roleIds &&
-      Array.isArray(userData.roleIds)
-    ) {
-      for (const roleId of userData.roleIds) {
-        await this.databaseService.UserRole.create({
-          userId: user.id,
-          roleId,
-        });
-      }
-    }
-
-    console.log(
-      '✓ User created:',
-      user.username,
-    );
-
-    return {
-      success: true,
-      message: 'User created successfully',
-      user,
+      permissions,
     };
-  } catch (error: any) {
-    console.error(
-      '❌ Create user error:',
-      error.message,
-    );
-
-    throw new BadRequestException(
-      error.message || 'Failed to create user',
-    );
   }
-}
 
-  // ✅ VALIDATE TOKEN
-async validateToken(token: string) {
-  try {
+  // ==========================
+  // Logout
+  // ==========================
+
+  async logout(token: string) {
     const loginToken =
       await this.databaseService.LoginToken.findOne({
         where: {
@@ -308,25 +288,141 @@ async validateToken(token: string) {
       });
 
     if (!loginToken) {
-      throw new UnauthorizedException(
-        'Token revoked',
+      return {
+        success: true,
+        message: 'Already logged out',
+      };
+    }
+
+    await loginToken.update({
+      isRevoked: true,
+      expiresAt: new Date(),
+    });
+
+    return {
+      success: true,
+      message: 'Logout successful',
+    };
+  }
+
+  // ==========================
+  // Create User
+  // ==========================
+
+  async createUser(
+    userData: any,
+    adminUser: any,
+  ) {
+    const existing =
+      await this.databaseService.User.findOne({
+        where: {
+          [Op.or]: [
+            {
+              username: userData.username,
+            },
+            {
+              email: userData.email,
+            },
+          ],
+        },
+      });
+
+    if (existing) {
+      throw new BadRequestException(
+        'Username or Email already exists',
       );
     }
+
+    const password = await bcrypt.hash(
+      userData.password,
+      10,
+    );
+
+    const businessUnitId =
+      adminUser.role === 'superadmin'
+        ? adminUser.selectedBusinessUnitId
+        : adminUser.businessUnitId;
+
+    if (!businessUnitId) {
+      throw new BadRequestException(
+        'Please select a Business Unit first',
+      );
+    }
+
+    const user =
+      await this.databaseService.User.create({
+        username: userData.username,
+        email: userData.email,
+        password,
+        name: userData.name,
+
+        role: userData.role || 'user',
+
+        businessUnitId,
+        companyId: null,
+
+        selectedBusinessUnitId: null,
+        selectedCompanyId: null,
+
+        isActive: true,
+
+        createdBy: adminUser.id,
+      });
 
     if (
-      new Date(loginToken.expiresAt) <
-      new Date()
+      userData.roleIds &&
+      Array.isArray(userData.roleIds)
     ) {
-      throw new UnauthorizedException(
-        'Token expired',
+      await this.databaseService.UserRole.bulkCreate(
+        userData.roleIds.map(
+          (roleId: number) => ({
+            userId: user.id,
+            roleId,
+          }),
+        ),
       );
     }
 
-    return jwt.verify(token, this.jwtSecret);
-  } catch {
-    throw new UnauthorizedException(
-      'Invalid token',
-    );
+    return {
+      success: true,
+      message: 'User created successfully',
+      user,
+    };
   }
-}
+
+  // ==========================
+  // Validate Token
+  // ==========================
+
+  async validateToken(token: string) {
+    try {
+      const loginToken =
+        await this.databaseService.LoginToken.findOne({
+          where: {
+            token,
+            isRevoked: false,
+          },
+        });
+
+      if (!loginToken) {
+        throw new UnauthorizedException(
+          'Token revoked',
+        );
+      }
+
+      if (
+        new Date(loginToken.expiresAt) < new Date()
+      ) {
+        throw new UnauthorizedException(
+          'Token expired',
+        );
+      }
+
+      return jwt.verify(token, this.jwtSecret);
+    } catch {
+      throw new UnauthorizedException(
+        'Invalid token',
+      );
+    }
+  }
 }

@@ -2,11 +2,17 @@ import { DataTypes, Model, Sequelize } from 'sequelize';
 
 export class Permission extends Model {
   declare id: number;
+
   declare module: string;
+
   declare subModule: string | null;
+
   declare action: string;
+
   declare permissionKey: string;
+
   declare description: string | null;
+
   declare isActive: boolean;
 
   declare readonly createdAt: Date;

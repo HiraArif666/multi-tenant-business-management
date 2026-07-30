@@ -17,9 +17,10 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 
+import { BusinessUnitGuard } from './guards/business-unit.guard';
 import { BusinessUnitsService } from './business-units.service';
 import { CreateBusinessUnitDto } from './dto/create-business-units.dto';
-
+import { SelectBusinessUnitDto } from './dto/select-business-unit.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { HasPermission } from '../auth/decorators/has-permission.decorator';
@@ -86,7 +87,7 @@ export class BusinessUnitsController {
 
     @Req() req: any,
   ) {
-return this.businessUnitsService.findOne(id);
+    return this.businessUnitsService.findOne(id, req.user);
   }
 
   // ==========================
@@ -128,4 +129,17 @@ return this.businessUnitsService.findOne(id);
       req.user,
     );
   }
+
+
+@Post(':id/select')
+@UseGuards(JwtGuard)
+selectBusinessUnit(
+  @Param('id', ParseIntPipe) id: number,
+  @Req() req: any,
+) {
+  return this.businessUnitsService.selectBusinessUnit(
+    id,
+    req.user,
+  );
+}
 }
