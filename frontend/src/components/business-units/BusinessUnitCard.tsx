@@ -8,7 +8,6 @@ import {
 
 import {
   ApartmentOutlined,
-  CheckCircleFilled,
   DashboardOutlined,
   EditOutlined,
   EyeOutlined,
@@ -30,7 +29,6 @@ export default function BusinessUnitCard({
   onEdit,
 }: Props) {
   const navigate = useNavigate();
-
   return (
     <Card
       hoverable
