@@ -28,7 +28,6 @@ export default function BusinessUnitCard({
   onSelect,
   onEdit,
 }: Props) {
-  const navigate = useNavigate();
   return (
     <Card
       hoverable

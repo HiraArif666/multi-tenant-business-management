@@ -272,7 +272,52 @@ export async function seedPermissions(
       permissionKey: 'master-data.customer.delete',
     },
     
+    // Expense
+    {
+      module: 'Expense',
+      subModule: null,
+      action: 'View',
+      permissionKey: 'expense.view',
+    },
+    {
+      module: 'Expense',
+      subModule: null,
+      action: 'Add',
+      permissionKey: 'expense.add',
+    },
+    {
+      module: 'Expense',
+      subModule: null,
+      action: 'Edit',
+      permissionKey: 'expense.edit',
+    },
+    {
+      module: 'Expense',
+      subModule: null,
+      action: 'Delete',
+      permissionKey: 'expense.delete',
+    },
+    {
+      module: 'Expense',
+      subModule: null,
+      action: 'Approve',
+      permissionKey: 'expense.approve',
+    },
 
+    // Settings -> Approval Settings
+    {
+      module: 'Settings',
+      subModule: 'Approval Settings',
+      action: 'View',
+      permissionKey: 'settings.approval-settings.view',
+    },
+    {
+      module: 'Settings',
+      subModule: 'Approval Settings',
+      action: 'Edit',
+      permissionKey: 'settings.approval-settings.edit',
+    }, 
+    
     // Profile
     {
       module: 'Profile',

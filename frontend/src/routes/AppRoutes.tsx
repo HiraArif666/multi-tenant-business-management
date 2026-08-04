@@ -19,6 +19,10 @@ import AppLayout from "../components/Layout/AppLayout";
 import CompanyList from "../pages/MasterData/CompanyList";
 import CompanyForm from "../pages/MasterData/CompanyForm";
 
+import Expenses from "../pages/Expenses";
+import ExpenseForm from "../pages/Expenses/ExpenseForm";
+import ApprovalSettings from "../pages/Settings/ApprovalSettings";
+
 const NotFound = () => <div>404 - Page Not Found</div>;
 
 export default function AppRoutes() {
@@ -37,7 +41,27 @@ export default function AppRoutes() {
           path="/dashboard"
           element={<Dashboard />}
         />
+        
+        <Route
+          path="/expenses"
+          element={<Expenses />}
+        />
 
+        <Route
+          path="/expenses/new"
+          element={<ExpenseForm />}
+        />
+
+        <Route
+          path="/expenses/edit/:id"
+          element={<ExpenseForm />}
+        />
+
+        <Route
+          path="/settings/approval-settings"
+          element={<ApprovalSettings />}
+        />
+        
         <Route
           path="/business-units"
           element={<BusinessUnits />}
@@ -119,5 +143,7 @@ export default function AppRoutes() {
         element={<NotFound />}
       />
     </Routes>
+
+    
   );
 }

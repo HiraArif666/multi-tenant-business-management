@@ -30,6 +30,14 @@ import {
   seedSuperAdminRole,
 } from './rbac.seeder';
 
+import { initExpenseModel } from './models/expense.model';
+import { initApprovalSettingModel } from './models/approval-setting.model';
+import { initApprovalSettingApproverModel } from './models/approval-setting-approver.model';
+import {
+  setupExpenseAssociations,
+  setupApprovalSettingAssociations,
+} from './associations/expense.association';
+
 dotenv.config();
 
 @Injectable()
@@ -49,6 +57,10 @@ export class DatabaseService implements OnModuleInit {
   public RolePermission: any;
   public UserRole: any;
   SelectedBusinessUnit: any;
+
+  public Expense: any;
+  public ApprovalSetting: any;
+  public ApprovalSettingApprover: any;
 
   async onModuleInit() {
     await this.initialize();
@@ -95,8 +107,12 @@ export class DatabaseService implements OnModuleInit {
       // ==========================
       // Setup Associations
       // ==========================
-
+this.Expense = initExpenseModel(this.sequelize);
+      this.ApprovalSetting = initApprovalSettingModel(this.sequelize);
+      this.ApprovalSettingApprover = initApprovalSettingApproverModel(this.sequelize);
       this.setupRelationships();
+      
+      
 
       // ==========================
       // Seed Data (ORDER MATTERS)
@@ -142,11 +158,14 @@ export class DatabaseService implements OnModuleInit {
       CompanyType: this.CompanyType,
       BusinessUnit: this.BusinessUnit,
       Company: this.Company,
-
       Role: this.Role,
       Permission: this.Permission,
       RolePermission: this.RolePermission,
       UserRole: this.UserRole,
+
+      Expense: this.Expense,
+      ApprovalSetting: this.ApprovalSetting,
+      ApprovalSettingApprover: this.ApprovalSettingApprover,
     };
 
     setupAuthAssociations(models);
@@ -154,8 +173,9 @@ export class DatabaseService implements OnModuleInit {
     setupCompanyAssociations(models);
     setupUserAssociations(models);
     setupRbacAssociations(models);
+    setupExpenseAssociations(models);
+    setupApprovalSettingAssociations(models);
   }
-
   getSequelize() {
     return this.sequelize;
   }

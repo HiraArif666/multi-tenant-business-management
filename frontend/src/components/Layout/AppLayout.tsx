@@ -23,7 +23,11 @@ import {
   ToolOutlined,
   SolutionOutlined,
   SmileOutlined,
+  DollarOutlined,
+  SettingOutlined,
+  AuditOutlined,
 } from "@ant-design/icons";
+
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { logout, getUser } from "../../utils/auth";
@@ -107,6 +111,28 @@ const menuItems: ItemType[] = [
           key: "/dashboard",
           icon: <DashboardOutlined />,
           label: "Dashboard",
+        },
+        
+        hasPermission("expense.view") && {
+          key: "/expenses",
+          icon: <DollarOutlined />,
+          label: "Expense",
+        },
+
+        hasPermission("settings.approval-settings.view") && {
+          key: "settings",
+          icon: <SettingOutlined />,
+          label: "Settings",
+
+          children: (
+            [
+              hasPermission("settings.approval-settings.view") && {
+                key: "/settings/approval-settings",
+                icon: <AuditOutlined />,
+                label: "Approval Settings",
+              },
+            ].filter(Boolean) as ItemType[]
+          ),
         },
 
         (hasPermission("staff.users.view") || hasPermission("staff.roles.view")) && {
