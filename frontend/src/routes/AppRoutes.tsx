@@ -23,12 +23,25 @@ import Expenses from "../pages/Expenses";
 import ExpenseForm from "../pages/Expenses/ExpenseForm";
 import ApprovalSettings from "../pages/Settings/ApprovalSettings";
 
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
+
 const NotFound = () => <div>404 - Page Not Found</div>;
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+       
+      <Route
+        path="/forgot-password"
+        element={<ForgotPassword />}
+      />
+
+      <Route
+        path="/reset-password"
+        element={<ResetPassword />}
+      />
 
       <Route
         element={

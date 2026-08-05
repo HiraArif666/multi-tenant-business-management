@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { Op } from 'sequelize';
 import { DatabaseService } from '../database/database.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +21,7 @@ export class AuthService {
 
   constructor(
     private databaseService: DatabaseService,
+    private readonly mailService: MailService,
   ) {}
 
   // =====================================
@@ -136,22 +139,22 @@ export class AuthService {
       ? this.rememberExpiry
       : this.normalExpiry;
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        email: user.email,
+const token = jwt.sign(
+  {
+    id: user.id,
+    username: user.username,
+    email: user.email,
 
-        role: user.role,
+    role: user.role,
 
-        businessUnitId: user.businessUnitId,
-        selectedBusinessUnitId:
-          user.selectedBusinessUnitId,
+    businessUnitId: user.businessUnitId,
+    selectedBusinessUnitId:
+      user.selectedBusinessUnitId,
 
-        companyId: user.companyId,
-        selectedCompanyId:
-          user.selectedCompanyId,
-      },
+    companyId: user.companyId,
+    selectedCompanyId:
+      user.selectedCompanyId,
+  },
       this.jwtSecret,
       {
         expiresIn,
@@ -240,15 +243,13 @@ export class AuthService {
 
       token,
 
- user: {
+      user: {
         id: user.id,
         username: user.username,
         email: user.email,
         name: user.name,
 
         role: user.role,
-
-        profilePicture: user.profilePicture,
 
         businessUnitId:
           user.businessUnitId,
@@ -274,11 +275,128 @@ export class AuthService {
     };
   }
 
-  // ==========================
-  // Logout
-  // ==========================
+// ==========================
+// Logout
+// ==========================
 
-  async logout(token: string) {
+async logout(token: string) {
+  const loginToken =
+    await this.databaseService.LoginToken.findOne({
+      where: {
+        token,
+        isRevoked: false,
+      },
+    });
+
+  if (!loginToken) {
+    return {
+      success: true,
+      message: 'Already logged out',
+    };
+  }
+
+  await loginToken.update({
+    isRevoked: true,
+    expiresAt: new Date(),
+  });
+
+  return {
+    success: true,
+    message: 'Logout successful',
+  };
+}
+
+// ==========================
+// Create User
+// ==========================
+
+async createUser(
+  userData: any,
+  adminUser: any,
+) {
+  const existing =
+    await this.databaseService.User.findOne({
+      where: {
+        [Op.or]: [
+          {
+            username: userData.username,
+          },
+          {
+            email: userData.email,
+          },
+        ],
+      },
+    });
+
+  if (existing) {
+    throw new BadRequestException(
+      'Username or Email already exists',
+    );
+  }
+
+  const password = await bcrypt.hash(
+    userData.password,
+    10,
+  );
+
+  const businessUnitId =
+    adminUser.role === 'superadmin'
+      ? adminUser.selectedBusinessUnitId
+      : adminUser.businessUnitId;
+
+  if (!businessUnitId) {
+    throw new BadRequestException(
+      'Please select a Business Unit first',
+    );
+  }
+
+  const user =
+    await this.databaseService.User.create({
+      username: userData.username,
+      email: userData.email,
+      password,
+      name: userData.name,
+
+      role: userData.role || 'user',
+
+      businessUnitId,
+      companyId: null,
+
+      selectedBusinessUnitId: null,
+      selectedCompanyId: null,
+
+      isActive: true,
+
+      createdBy: adminUser.id,
+    });
+
+  if (
+    userData.roleIds &&
+    Array.isArray(userData.roleIds)
+  ) {
+    await this.databaseService.UserRole.bulkCreate(
+      userData.roleIds.map(
+        (roleId: number) => ({
+          userId: user.id,
+          roleId,
+        }),
+      ),
+    );
+  }
+
+  return {
+    success: true,
+    message: 'User created successfully',
+    user,
+  };
+}
+
+// ==========================
+// Validate Token
+// ==========================
+
+async validateToken(token: string) {
+  try {
     const loginToken =
       await this.databaseService.LoginToken.findOne({
         where: {
@@ -288,141 +406,136 @@ export class AuthService {
       });
 
     if (!loginToken) {
-      return {
-        success: true,
-        message: 'Already logged out',
-      };
+      throw new UnauthorizedException(
+        'Token revoked',
+      );
     }
 
-    await loginToken.update({
-      isRevoked: true,
-      expiresAt: new Date(),
+    if (
+      new Date(loginToken.expiresAt) <
+      new Date()
+    ) {
+      throw new UnauthorizedException(
+        'Token expired',
+      );
+    }
+
+    return jwt.verify(token, this.jwtSecret);
+  } catch {
+    throw new UnauthorizedException(
+      'Invalid token',
+    );
+  }
+}
+
+  // ==========================
+  // Forgot Password
+  // ==========================
+
+  async forgotPassword(email: string) {
+    const genericResponse = {
+      success: true,
+      message:
+        'If an account exists for that email, a reset link has been sent.',
+    };
+
+    const user =
+      await this.databaseService.User.findOne({
+        where: { email },
+      });
+
+    // Same response whether or not the email exists —
+    // don't let this endpoint be used to enumerate accounts.
+    if (!user) {
+      return genericResponse;
+    }
+
+    const rawToken = crypto
+      .randomBytes(32)
+      .toString('hex');
+
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 1);
+
+    await user.update({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: expires,
     });
 
-    return {
-      success: true,
-      message: 'Logout successful',
-    };
+    const frontendUrl =
+      process.env.FRONTEND_URL ||
+      'http://localhost:5173';
+
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      resetLink,
+    );
+
+    return genericResponse;
   }
 
   // ==========================
-  // Create User
+  // Reset Password
   // ==========================
 
-  async createUser(
-    userData: any,
-    adminUser: any,
+  async resetPassword(
+    token: string,
+    password: string,
   ) {
-    const existing =
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const user =
       await this.databaseService.User.findOne({
         where: {
-          [Op.or]: [
-            {
-              username: userData.username,
-            },
-            {
-              email: userData.email,
-            },
-          ],
+          resetPasswordToken: hashedToken,
+          resetPasswordExpires: {
+            [Op.gt]: new Date(),
+          },
         },
       });
 
-    if (existing) {
+    if (!user) {
       throw new BadRequestException(
-        'Username or Email already exists',
+        'This reset link is invalid or has expired',
       );
     }
 
-    const password = await bcrypt.hash(
-      userData.password,
+    const hashedPassword = await bcrypt.hash(
+      password,
       10,
     );
 
-    const businessUnitId =
-      adminUser.role === 'superadmin'
-        ? adminUser.selectedBusinessUnitId
-        : adminUser.businessUnitId;
+    await user.update({
+      password: hashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
 
-    if (!businessUnitId) {
-      throw new BadRequestException(
-        'Please select a Business Unit first',
-      );
-    }
-
-    const user =
-      await this.databaseService.User.create({
-        username: userData.username,
-        email: userData.email,
-        password,
-        name: userData.name,
-
-        role: userData.role || 'user',
-
-        businessUnitId,
-        companyId: null,
-
-        selectedBusinessUnitId: null,
-        selectedCompanyId: null,
-
-        isActive: true,
-
-        createdBy: adminUser.id,
-      });
-
-    if (
-      userData.roleIds &&
-      Array.isArray(userData.roleIds)
-    ) {
-      await this.databaseService.UserRole.bulkCreate(
-        userData.roleIds.map(
-          (roleId: number) => ({
-            userId: user.id,
-            roleId,
-          }),
-        ),
-      );
-    }
+    // Log the user out everywhere — a password reset should
+    // invalidate any sessions that might be on a compromised device.
+    await this.databaseService.LoginToken.update(
+      { isRevoked: true },
+      {
+        where: {
+          userId: user.id,
+          isRevoked: false,
+        },
+      },
+    );
 
     return {
       success: true,
-      message: 'User created successfully',
-      user,
+      message: 'Password reset successfully',
     };
-  }
-
-  // ==========================
-  // Validate Token
-  // ==========================
-
-  async validateToken(token: string) {
-    try {
-      const loginToken =
-        await this.databaseService.LoginToken.findOne({
-          where: {
-            token,
-            isRevoked: false,
-          },
-        });
-
-      if (!loginToken) {
-        throw new UnauthorizedException(
-          'Token revoked',
-        );
-      }
-
-      if (
-        new Date(loginToken.expiresAt) < new Date()
-      ) {
-        throw new UnauthorizedException(
-          'Token expired',
-        );
-      }
-
-      return jwt.verify(token, this.jwtSecret);
-    } catch {
-      throw new UnauthorizedException(
-        'Invalid token',
-      );
-    }
   }
 }

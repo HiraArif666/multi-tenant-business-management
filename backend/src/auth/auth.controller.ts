@@ -17,6 +17,8 @@ import {
 
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Authentication')
 @Controller('api/auth')
@@ -42,6 +44,25 @@ export class AuthController {
       body.username,
       body.password,
       body.rememberMe,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Request a password reset email',
+  })
+  @Post('forgot-password')
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @ApiOperation({
+    summary: 'Reset password using a reset token',
+  })
+  @Post('reset-password')
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(
+      body.token,
+      body.password,
     );
   }
 

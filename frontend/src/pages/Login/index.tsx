@@ -19,6 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   useNavigate,
+  Link,
 } from "react-router-dom";
 
 import {
@@ -207,23 +208,37 @@ export default function Login() {
               marginBottom: 20,
             }}
           >
-            <Controller
-              name="rememberMe"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.checked,
-                    )
-                  }
-                >
-                  Remember Me
-                </Checkbox>
-              )}
-            />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Controller
+                name="rememberMe"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.checked,
+                      )
+                    }
+                  >
+                    Remember Me
+                  </Checkbox>
+                )}
+              />
+
+              <Link to="/forgot-password">
+                Forgot password?
+              </Link>
+            </div>
           </Form.Item>
+
+    
 
           <Button
             type="primary"

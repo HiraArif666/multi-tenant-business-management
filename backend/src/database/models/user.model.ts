@@ -13,6 +13,9 @@ export class User extends Model {
   declare name: string | null;
 
   declare profilePicture: string | null;
+  
+  declare resetPasswordToken: string | null;
+  declare resetPasswordExpires: Date | null;
 
   // Temporary until RBAC fully replaces it
   declare role: string;
@@ -123,6 +126,16 @@ export function initUserModel(
 
       deletedBy: {
         type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+
+      resetPasswordToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      resetPasswordExpires: {
+        type: DataTypes.DATE,
         allowNull: true,
       },
     },

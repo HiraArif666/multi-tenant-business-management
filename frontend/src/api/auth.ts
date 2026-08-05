@@ -19,3 +19,26 @@ export const login = async (
 export const logout = async () => {
   await api.post("api//auth/logout");
 };
+
+export const forgotPassword = async (
+  email: string,
+) => {
+  const response = await api.post(
+    "/api/auth/forgot-password",
+    { email },
+  );
+
+  return response.data;
+};
+
+export const resetPassword = async (
+  token: string,
+  password: string,
+) => {
+  const response = await api.post(
+    "/api/auth/reset-password",
+    { token, password },
+  );
+
+  return response.data;
+};
