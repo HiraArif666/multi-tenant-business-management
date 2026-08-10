@@ -25,6 +25,7 @@ import {
   useApproveExpense,
   useRejectExpense,
 } from "../../hooks/useExpenses";
+import { exportExpenses } from "../../services/expense";
 
 import { hasPermission } from "../../utils/permissions";
 
@@ -44,6 +45,7 @@ export default function Expenses() {
     limit: 20,
     status: undefined as string | undefined,
   });
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = useExpenses(filters);
 
@@ -54,6 +56,7 @@ export default function Expenses() {
   const canApprove = hasPermission("expense.approve");
   const canEdit = hasPermission("expense.edit");
   const canDelete = hasPermission("expense.delete");
+  const canExport = hasPermission("expense.export");
 
   const handleDelete = async (id: number) => {
     try {
@@ -88,6 +91,35 @@ export default function Expenses() {
         error?.response?.data?.message ??
           "Failed to reject expense",
       );
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const data = await exportExpenses({
+        status: filters.status,
+      });
+      const blob = new Blob([data], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "expenses.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      message.success("Excel file downloaded");
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ??
+          "Failed to export expenses",
+      );
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -200,13 +232,26 @@ export default function Expenses() {
           Expenses ({data?.total ?? 0})
         </Title>
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate("/expenses/new")}
-        >
-          Add New
-        </Button>
+        <Space>
+          {canExport && (
+            <Button
+              icon={<PlusOutlined />}
+              type="default"
+              loading={isExporting}
+              onClick={handleExport}
+            >
+              Export Excel
+            </Button>
+          )}
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate("/expenses/new")}
+          >
+            Add New
+          </Button>
+        </Space>
       </Space>
 
       <Select
@@ -227,6 +272,11 @@ export default function Expenses() {
           { label: "Rejected", value: "rejected" },
         ]}
       />
+
+      <div style={{ marginBottom: 16 }}>
+        <strong>Total Amount: </strong>
+        Rs. {Number(data?.totalAmount ?? 0).toLocaleString()}
+      </div>
 
       <Table
         rowKey="id"

@@ -14,6 +14,11 @@ export function setupExpenseAssociations(models: any) {
     foreignKey: 'approvedBy',
     as: 'approver',
   });
+
+  Expense.belongsTo(User, {
+    foreignKey: 'createdBy',
+    as: 'creator',
+  });
 }
 
 export function setupApprovalSettingAssociations(

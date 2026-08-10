@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { Op } from 'sequelize';
+import * as ExcelJS from 'exceljs';
 
 import { DatabaseService } from '../database/database.service';
 import { ApprovalSettingsService } from '../settings/approval-settings.service';
@@ -49,7 +50,6 @@ export class ExpensesService {
     const where: any = {
       businessUnitId,
       isActive: true,
-
     };
 
     if (query.status) {
@@ -92,10 +92,20 @@ export class ExpensesService {
         },
       );
 
+    // Sum across ALL matching records, not just the current page —
+    // this is what the frontend shows below the filters and what
+    // gets printed at the top of the exported Excel file.
+    const totalAmount =
+      (await this.databaseService.Expense.sum(
+        'amount',
+        { where },
+      )) || 0;
+
     return {
       success: true,
       data: rows,
       total: count,
+      totalAmount,
       page,
       limit,
     };
@@ -340,5 +350,126 @@ export class ExpensesService {
       message: 'Expense rejected successfully',
       data: expense,
     };
+  }
+
+  // ==========================
+  // Export to Excel — same filters as findAll, but no
+  // pagination (the full matching list goes into the file)
+  // ==========================
+
+  async exportToExcel(
+    query: any,
+    user: any,
+  ): Promise<Buffer> {
+    const businessUnitId =
+      this.resolveBusinessUnitId(user);
+
+    const where: any = {
+      businessUnitId,
+      isActive: true,
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.search) {
+      where.title = {
+        [Op.iLike]: `%${query.search}%`,
+      };
+    }
+
+    const expenses =
+      await this.databaseService.Expense.findAll({
+        where,
+        order: [['createdAt', 'DESC']],
+
+        include: [
+          {
+            association: 'approver',
+            attributes: ['id', 'name'],
+          },
+          {
+            association: 'creator',
+            attributes: ['id', 'name'],
+          },
+        ],
+      });
+
+    const totalAmount = expenses.reduce(
+      (sum: number, expense: any) =>
+        sum + Number(expense.amount),
+      0,
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Expenses');
+
+    const columns = [
+      'Title',
+      'Description',
+      'Amount',
+      'Status',
+      'Decided By',
+      'Created By',
+      'Created At',
+    ];
+
+    // Sum banner across the top of the sheet
+    sheet.mergeCells(
+      `A1:${String.fromCharCode(64 + columns.length)}1`,
+    );
+    sheet.getCell('A1').value =
+      `Total Amount: Rs. ${totalAmount.toLocaleString()}`;
+    sheet.getCell('A1').font = {
+      bold: true,
+      size: 13,
+    };
+
+    sheet.addRow([]);
+
+    const headerRow = sheet.addRow(columns);
+    headerRow.font = { bold: true };
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF0F0F0' },
+      };
+    });
+
+    expenses.forEach((expense: any) => {
+      const createdByName =
+        expense.creator?.name ??
+        (typeof expense.get === 'function'
+          ? expense.get('createdByName')
+          : expense.createdByName);
+
+      sheet.addRow([
+        expense.title,
+        expense.description ?? '',
+        Number(expense.amount),
+        expense.status,
+        expense.approver?.name ?? '',
+        createdByName ?? '',
+        expense.createdAt
+          ? new Date(
+              expense.createdAt,
+            ).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })
+          : '',
+      ]);
+    });
+
+    sheet.columns.forEach((column) => {
+      column.width = 24;
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    return buffer as unknown as Buffer;
   }
 }

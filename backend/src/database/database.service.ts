@@ -8,8 +8,11 @@ import { initCompanyTypeModel } from './models/company-type.model';
 import { initBusinessUnitModel } from './models/business-unit.model';
 import { initCompanyModel } from './models/company.model';
 import { initFileModel } from './models/file.model';
-
-import { seedCompanyTypes } from './company-type.seeder';
+import { initExpenseModel } from './models/expense.model';
+import { initApprovalSettingModel } from './models/approval-setting.model';
+import { initApprovalSettingApproverModel } from './models/approval-setting-approver.model';
+import { initAuditLogModel } from './models/audit-log.model';
+import { registerAuditHooks } from '../audit-log/audit-hooks';
 
 import { initRoleModel } from './models/role.model';
 import { initPermissionModel } from './models/permission.model';
@@ -21,22 +24,19 @@ import { setupBusinessUnitAssociations } from './associations/business-unit.asso
 import { setupCompanyAssociations } from './associations/company.association';
 import { setupUserAssociations } from './associations/user.association';
 import { setupRbacAssociations } from './associations/rbac.association';
+import {
+  setupExpenseAssociations,
+  setupApprovalSettingAssociations,
+} from './associations/expense.association';
 
 import { seedSuperAdmin } from './seeder';
 import { seedPermissions } from './permission.seeder';
+import { seedCompanyTypes } from './company-type.seeder';
 import {
   seedRoles,
   seedRolePermissions,
   seedSuperAdminRole,
 } from './rbac.seeder';
-
-import { initExpenseModel } from './models/expense.model';
-import { initApprovalSettingModel } from './models/approval-setting.model';
-import { initApprovalSettingApproverModel } from './models/approval-setting-approver.model';
-import {
-  setupExpenseAssociations,
-  setupApprovalSettingAssociations,
-} from './associations/expense.association';
 
 dotenv.config();
 
@@ -50,6 +50,10 @@ export class DatabaseService implements OnModuleInit {
   public BusinessUnit: any;
   public Company: any;
   public File: any;
+  public Expense: any;
+  public ApprovalSetting: any;
+  public ApprovalSettingApprover: any;
+  public AuditLog: any;
 
   // RBAC
   public Role: any;
@@ -58,20 +62,11 @@ export class DatabaseService implements OnModuleInit {
   public UserRole: any;
   SelectedBusinessUnit: any;
 
-  public Expense: any;
-  public ApprovalSetting: any;
-  public ApprovalSettingApprover: any;
-
   async onModuleInit() {
     await this.initialize();
   }
 
   async initialize() {
-    console.log('DB_HOST:', process.env.DB_HOST);
-    console.log('DB_PORT:', process.env.DB_PORT);
-    console.log('DB_DATABASE:', process.env.DB_DATABASE);
-    console.log('DB_USERNAME:', process.env.DB_USERNAME);
-
     this.sequelize = new Sequelize({
       database: process.env.DB_DATABASE || 'multi_tenant_db',
       username: process.env.DB_USERNAME || 'postgres',
@@ -96,6 +91,10 @@ export class DatabaseService implements OnModuleInit {
       this.BusinessUnit = initBusinessUnitModel(this.sequelize);
       this.Company = initCompanyModel(this.sequelize);
       this.File = initFileModel(this.sequelize);
+      this.Expense = initExpenseModel(this.sequelize);
+      this.ApprovalSetting = initApprovalSettingModel(this.sequelize);
+      this.ApprovalSettingApprover = initApprovalSettingApproverModel(this.sequelize);
+      this.AuditLog = initAuditLogModel(this.sequelize);
 
       // RBAC Models
 
@@ -107,12 +106,8 @@ export class DatabaseService implements OnModuleInit {
       // ==========================
       // Setup Associations
       // ==========================
-this.Expense = initExpenseModel(this.sequelize);
-      this.ApprovalSetting = initApprovalSettingModel(this.sequelize);
-      this.ApprovalSettingApprover = initApprovalSettingApproverModel(this.sequelize);
+
       this.setupRelationships();
-      
-      
 
       // ==========================
       // Seed Data (ORDER MATTERS)
@@ -123,9 +118,6 @@ this.Expense = initExpenseModel(this.sequelize);
 
       // 2. System Roles
       await seedRoles(this);
-      
-      // 2. System Roles
-      await seedRoles(this);
 
       // 2b. Master Data Company Types
       await seedCompanyTypes(this);
@@ -133,14 +125,53 @@ this.Expense = initExpenseModel(this.sequelize);
       // 3. Role -> Permission mapping
       await seedRolePermissions(this);
 
-      // 4. Role -> Permission mapping
-      await seedRolePermissions(this);
-
-      // 5. Super Admin User
+      // 4. Super Admin User
       await seedSuperAdmin(this);
 
-      // 6. Assign Super Admin Role
+      // 5. Assign Super Admin Role
       await seedSuperAdminRole(this);
+
+      // ==========================
+      // Audit Logging (must be last — after seeding, so
+      // seed-time inserts don't get logged as "user actions")
+      // ==========================
+
+      registerAuditHooks(this.User, this.AuditLog, {
+        module: 'Users',
+        tableName: 'users',
+      });
+
+      registerAuditHooks(this.BusinessUnit, this.AuditLog, {
+        module: 'Business Units',
+        tableName: 'business_units',
+      });
+
+      registerAuditHooks(this.Company, this.AuditLog, {
+        module: 'Master Data',
+        tableName: 'companies',
+      });
+
+      registerAuditHooks(this.CompanyType, this.AuditLog, {
+        module: 'Company Types',
+        tableName: 'company_types',
+      });
+
+      registerAuditHooks(this.Role, this.AuditLog, {
+        module: 'Roles',
+        tableName: 'roles',
+      });
+
+      registerAuditHooks(this.Expense, this.AuditLog, {
+        module: 'Expenses',
+        tableName: 'expenses',
+      });
+
+      registerAuditHooks(this.ApprovalSetting, this.AuditLog, {
+        module: 'Settings',
+        tableName: 'approval_settings',
+      });
+
+      console.log('✓ Audit logging enabled');
 
       console.log('✓ Database initialized successfully');
     } catch (error) {
@@ -158,6 +189,7 @@ this.Expense = initExpenseModel(this.sequelize);
       CompanyType: this.CompanyType,
       BusinessUnit: this.BusinessUnit,
       Company: this.Company,
+
       Role: this.Role,
       Permission: this.Permission,
       RolePermission: this.RolePermission,
@@ -176,6 +208,7 @@ this.Expense = initExpenseModel(this.sequelize);
     setupExpenseAssociations(models);
     setupApprovalSettingAssociations(models);
   }
+
   getSequelize() {
     return this.sequelize;
   }

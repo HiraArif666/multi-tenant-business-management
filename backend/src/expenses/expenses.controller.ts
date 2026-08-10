@@ -8,9 +8,11 @@ import {
   Query,
   Body,
   Req,
+  Res,
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
+import express from 'express';
 
 import {
   ApiTags,
@@ -44,6 +46,29 @@ export class ExpensesController {
       query,
       req.user,
     );
+  }
+
+  @Get('export')
+  @HasPermission('expense.export')
+  @ApiOperation({ summary: 'Export Expenses to Excel' })
+  async export(
+    @Query() query: any,
+    @Req() req: any,
+    @Res() res: express.Response,
+  ) {
+    const buffer = await this.expensesService.exportToExcel(
+      query,
+      req.user,
+    );
+
+    res.status(200)
+      .set({
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition':
+          'attachment; filename="expenses.xlsx"',
+      })
+      .send(buffer);
   }
 
   @Get(':id')

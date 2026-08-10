@@ -26,6 +26,7 @@ import {
   DollarOutlined,
   SettingOutlined,
   AuditOutlined,
+  FileSearchOutlined,
 } from "@ant-design/icons";
 
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -118,7 +119,13 @@ const menuItems: ItemType[] = [
           icon: <DollarOutlined />,
           label: "Expense",
         },
-
+        
+        hasPermission("audit-log.view") && {
+          key: "/audit-log",
+          icon: <FileSearchOutlined />,
+          label: "Audit Log",
+        },
+        
         hasPermission("settings.approval-settings.view") && {
           key: "settings",
           icon: <SettingOutlined />,

@@ -12,6 +12,15 @@ export const getExpenses = async (params?: any) => {
   return response.data;
 };
 
+export const exportExpenses = async (params?: any) => {
+  const response = await api.get("/api/expenses/export", {
+    params,
+    responseType: "blob",
+  });
+
+  return response.data;
+};
+
 export const getExpense = async (id: number) => {
   const response = await api.get(`/api/expenses/${id}`);
 

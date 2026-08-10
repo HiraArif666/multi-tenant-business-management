@@ -11,6 +11,36 @@ export async function seedPermissions(
       action: 'View',
       permissionKey: 'dashboard.view',
     },
+    {
+      module: 'Dashboard',
+      subModule: 'Expenses This Month',
+      action: 'View',
+      permissionKey: 'dashboard.expenses-month.view',
+    },
+    {
+      module: 'Dashboard',
+      subModule: 'Pending Approvals',
+      action: 'View',
+      permissionKey: 'dashboard.pending-approvals.view',
+    },
+    {
+      module: 'Dashboard',
+      subModule: 'Top Expense Categories',
+      action: 'View',
+      permissionKey: 'dashboard.top-expense-categories.view',
+    },
+    {
+      module: 'Dashboard',
+      subModule: 'Monthly Expense Chart',
+      action: 'View',
+      permissionKey: 'dashboard.monthly-expense-chart.view',
+    },
+    {
+      module: 'Dashboard',
+      subModule: 'Recent Activity',
+      action: 'View',
+      permissionKey: 'dashboard.recent-activity.view',
+    },
 
     // Business Units
     {
@@ -303,7 +333,14 @@ export async function seedPermissions(
       action: 'Approve',
       permissionKey: 'expense.approve',
     },
-
+    
+     {
+      module: 'Expense',
+      subModule: null,
+      action: 'Export',
+      permissionKey: 'expense.export',
+    },
+    
     // Settings -> Approval Settings
     {
       module: 'Settings',
@@ -318,6 +355,14 @@ export async function seedPermissions(
       permissionKey: 'settings.approval-settings.edit',
     }, 
     
+    // Audit Log
+    {
+      module: 'Audit Log',
+      subModule: null,
+      action: 'View',
+      permissionKey: 'audit-log.view',
+    },
+
     // Profile
     {
       module: 'Profile',

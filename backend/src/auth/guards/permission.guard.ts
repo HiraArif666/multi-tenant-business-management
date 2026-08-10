@@ -58,6 +58,19 @@ export class PermissionGuard implements CanActivate {
       (x: any) => x.roleId,
     );
 
+    // If user has Super Admin role, grant all permissions
+    const roles = await this.databaseService.Role.findAll({
+      where: {
+        id: {
+          [Op.in]: roleIds,
+        },
+      },
+    });
+
+    if (roles.some((r: any) => r.name === 'Super Admin')) {
+      return true;
+    }
+
     // =====================================
     // Get Role Permissions
     // =====================================

@@ -26,6 +26,8 @@ import ApprovalSettings from "../pages/Settings/ApprovalSettings";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 
+import AuditLog from "../pages/AuditLog";
+
 const NotFound = () => <div>404 - Page Not Found</div>;
 
 export default function AppRoutes() {
@@ -53,6 +55,11 @@ export default function AppRoutes() {
         <Route
           path="/dashboard"
           element={<Dashboard />}
+        />
+        
+        <Route
+          path="/audit-log"
+          element={<AuditLog />}
         />
         
         <Route
