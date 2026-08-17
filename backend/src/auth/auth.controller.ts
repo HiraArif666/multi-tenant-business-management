@@ -74,7 +74,7 @@ export class AuthController {
   @UseGuards(JwtGuard)
   logout(@Req() req: any) {
     const token = req.headers.authorization.split(' ')[1];
-    return this.authService.logout(token);
+    return this.authService.logout(token, req.user);
   }
 
   @ApiBearerAuth()

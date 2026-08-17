@@ -49,10 +49,23 @@ export class ExpensesService {
 
     const where: any = {
       businessUnitId,
-      isActive: true,
     };
 
-    if (query.status) {
+    let paranoid = true;
+
+    if (query.status === 'inactive' || query.activeStatus === 'inactive') {
+      paranoid = false;
+      where[Op.or] = [
+        { isActive: false },
+        { deletedAt: { [Op.ne]: null } },
+      ];
+    } else if (query.status === 'all' || query.activeStatus === 'all') {
+      paranoid = false;
+    } else {
+      where.isActive = true;
+    }
+
+    if (query.status && query.status !== 'inactive' && query.status !== 'all') {
       where.status = query.status;
     }
 
@@ -69,6 +82,7 @@ export class ExpensesService {
           limit,
           offset,
           order: [['createdAt', 'DESC']],
+          paranoid,
 
           include: [
             {
@@ -98,7 +112,7 @@ export class ExpensesService {
     const totalAmount =
       (await this.databaseService.Expense.sum(
         'amount',
-        { where },
+        { where, paranoid },
       )) || 0;
 
     return {
@@ -244,8 +258,8 @@ export class ExpensesService {
     await expense.update({
       isActive: false,
       deletedBy: user.id,
-      deletedAt: new Date(),
     });
+    await expense.destroy();
 
     return {
       success: true,
@@ -257,7 +271,7 @@ export class ExpensesService {
   // Approve / Reject — shared guard logic
   // ==========================
 
-  private async assertCanDecide(
+private async assertCanDecide(
     expense: any,
     businessUnitId: number,
     user: any,
@@ -266,6 +280,11 @@ export class ExpensesService {
       throw new ForbiddenException(
         'This expense has already been decided',
       );
+    }
+
+    // Superadmin bypasses the configured-approver check entirely
+    if (user.role === 'superadmin') {
+      return;
     }
 
     const allowed =

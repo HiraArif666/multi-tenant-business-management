@@ -10,6 +10,7 @@ import {
   Switch,
   Select,
   Avatar,
+  Tag,
   message,
 } from "antd";
 
@@ -146,17 +147,22 @@ export default function CompanyList() {
     { title: "Modified By", dataIndex: "updatedByName" },
 
     {
-      title: "Active",
+      title: "Status / Active",
 
-      render: (_: any, record: any) => (
-        <Switch
-          checked={record.isActive}
-          loading={updateStatusMutation.isPending}
-          onChange={(checked) =>
-            handleStatusChange(record, checked)
-          }
-        />
-      ),
+      render: (_: any, record: any) => {
+        if (record.deletedAt) {
+          return <Tag color="red">Deleted</Tag>;
+        }
+        return (
+          <Switch
+            checked={record.isActive}
+            loading={updateStatusMutation.isPending}
+            onChange={(checked) =>
+              handleStatusChange(record, checked)
+            }
+          />
+        );
+      },
     },
   ];
 

@@ -29,6 +29,8 @@ import {
   setupApprovalSettingAssociations,
 } from './associations/expense.association';
 
+import { initSecurityLogModel } from './models/security-log.model';
+
 import { seedSuperAdmin } from './seeder';
 import { seedPermissions } from './permission.seeder';
 import { seedCompanyTypes } from './company-type.seeder';
@@ -37,6 +39,8 @@ import {
   seedRolePermissions,
   seedSuperAdminRole,
 } from './rbac.seeder';
+import { initReportModel } from './models/report.model';
+import {initJobScheduleModel} from './models/jobschedule.model';
 
 dotenv.config();
 
@@ -60,7 +64,11 @@ export class DatabaseService implements OnModuleInit {
   public Permission: any;
   public RolePermission: any;
   public UserRole: any;
+  
+  public SecurityLog: any;
   SelectedBusinessUnit: any;
+  public Report!: typeof import('./models/report.model').Report;
+  public JobSchedule: any;
 
   async onModuleInit() {
     await this.initialize();
@@ -102,11 +110,15 @@ export class DatabaseService implements OnModuleInit {
       this.Permission = initPermissionModel(this.sequelize);
       this.RolePermission = initRolePermissionModel(this.sequelize);
       this.UserRole = initUserRoleModel(this.sequelize);
+      this.SecurityLog = initSecurityLogModel(this.sequelize);
+      this.Report = initReportModel(this.sequelize);
 
       // ==========================
       // Setup Associations
       // ==========================
 
+      // initialization:
+      this.JobSchedule = initJobScheduleModel(this.sequelize);
       this.setupRelationships();
 
       // ==========================

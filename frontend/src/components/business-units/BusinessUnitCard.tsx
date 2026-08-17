@@ -73,8 +73,8 @@ export default function BusinessUnitCard({
           }}
         >
           <Badge
-            status={item.isActive ? "success" : "error"}
-            text={item.isActive ? "Active" : "Inactive"}
+            status={item.deletedAt ? "error" : item.isActive ? "success" : "error"}
+            text={item.deletedAt ? "Deleted" : item.isActive ? "Active" : "Inactive"}
           />
         </div>
       </div>

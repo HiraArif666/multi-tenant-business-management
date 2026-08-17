@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import {
   Layout,
   Menu,
@@ -7,6 +8,7 @@ import {
   Dropdown,
   Space,
 } from "antd";
+
 import {
   DashboardOutlined,
   AppstoreOutlined,
@@ -27,16 +29,37 @@ import {
   SettingOutlined,
   AuditOutlined,
   FileSearchOutlined,
+  ImportOutlined,
+  BarChartOutlined,
+  ScheduleOutlined,
 } from "@ant-design/icons";
 
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
-import { logout, getUser } from "../../utils/auth";
-import { getSelectedBusinessUnit } from "../../utils/businessUnit";
-import { hasPermission } from "../../utils/permissions";
-import { getFileUrl } from "../../services/file";
+import {
+  logout,
+  getUser,
+} from "../../utils/auth";
+
+import {
+  getSelectedBusinessUnit,
+} from "../../utils/businessUnit";
+
+import {
+  hasPermission,
+} from "../../utils/permissions";
+
+import {
+  getFileUrl,
+} from "../../services/file";
+
 import type { MenuProps } from "antd";
 import type { ItemType } from "antd/es/menu/interface";
+
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
@@ -44,7 +67,8 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] =
+    useState(false);
 
   const user = getUser();
 
@@ -59,29 +83,73 @@ export default function AppLayout() {
 
   const handleLogout = () => {
     logout();
+
     navigate("/", {
       replace: true,
     });
   };
 
+  // ==========================
+  // Open Sidebar Sections
+  // ==========================
+
   const getOpenKeys = () => {
     if (
       location.pathname.startsWith("/users") ||
-      location.pathname.startsWith("/roles")
+      location.pathname.startsWith("/roles") ||
+      location.pathname.startsWith(
+        "/settings/job-scheduler"
+      )
     ) {
       return ["staff"];
     }
 
-    if (location.pathname.startsWith("/master-data")) {
+    if (
+      location.pathname.startsWith(
+        "/settings/approval-settings"
+      )
+    ) {
+      return ["settings"];
+    }
+
+    if (
+      location.pathname.startsWith(
+        "/master-data"
+      )
+    ) {
       return ["master-data"];
     }
 
     return [];
   };
 
+  // ==========================
+  // Header Title
+  // ==========================
+
   const getHeaderTitle = () => {
-    if (location.pathname.startsWith("/business-units")) {
+    if (
+      location.pathname.startsWith(
+        "/business-units"
+      )
+    ) {
       return "Business Units";
+    }
+
+    if (
+      location.pathname.startsWith(
+        "/settings/job-scheduler"
+      )
+    ) {
+      return "Job Scheduler";
+    }
+
+    if (
+      location.pathname.startsWith(
+        "/settings/approval-settings"
+      )
+    ) {
+      return "Approval Settings";
     }
 
     if (businessUnitSelected) {
@@ -97,160 +165,293 @@ export default function AppLayout() {
   // Sidebar Menu
   // ==========================
 
-const menuItems: ItemType[] = [
-  hasPermission("business-units.view") &&
-    (user?.role === "superadmin" ||
-      user?.role === "bu-admin") && {
-      key: "/business-units",
-      icon: <ApartmentOutlined />,
-      label: "Business Units",
-    },
+  const menuItems: ItemType[] = [
+    hasPermission("business-units.view") &&
+      (user?.role === "superadmin" ||
+        user?.role === "bu-admin") && {
+        key: "/business-units",
+        icon: <ApartmentOutlined />,
+        label: "Business Units",
+      },
 
-  ...((businessUnitSelected || !isSuperAdmin)
-    ? [
-        hasPermission("dashboard.view") && {
-          key: "/dashboard",
-          icon: <DashboardOutlined />,
-          label: "Dashboard",
-        },
-        
-        hasPermission("expense.view") && {
-          key: "/expenses",
-          icon: <DollarOutlined />,
-          label: "Expense",
-        },
-        
-        hasPermission("audit-log.view") && {
-          key: "/audit-log",
-          icon: <FileSearchOutlined />,
-          label: "Audit Log",
-        },
-        
-        hasPermission("settings.approval-settings.view") && {
-          key: "settings",
-          icon: <SettingOutlined />,
-          label: "Settings",
+    ...(
+      businessUnitSelected || !isSuperAdmin
+    )
+      ? [
+          // ==========================
+          // Dashboard
+          // ==========================
 
-          children: (
-            [
-              hasPermission("settings.approval-settings.view") && {
-                key: "/settings/approval-settings",
-                icon: <AuditOutlined />,
-                label: "Approval Settings",
+          hasPermission("dashboard.view") && {
+            key: "/dashboard",
+            icon: <DashboardOutlined />,
+            label: "Dashboard",
+          },
+
+          // ==========================
+          // Expense
+          // ==========================
+
+          hasPermission("expense.view") && {
+            key: "/expenses",
+            icon: <DollarOutlined />,
+            label: "Expense",
+          },
+
+          // ==========================
+          // Import
+          // ==========================
+
+          (
+            hasPermission("import.view") ||
+            hasPermission("expense.view") ||
+            hasPermission("expense.add")
+          ) && {
+            key: "/import",
+            icon: <ImportOutlined />,
+            label: "Import",
+          },
+
+          // ==========================
+          // Reports
+          // ==========================
+
+          hasPermission("reports.view") && {
+            key: "/reports",
+            icon: <BarChartOutlined />,
+            label: "Reports",
+          },
+
+          // ==========================
+          // Audit Log
+          // ==========================
+
+          hasPermission("audit-log.view") && {
+            key: "/audit-log",
+            icon: <FileSearchOutlined />,
+            label: "Audit Log",
+          },
+
+          // ==========================
+          // Security Logs
+          // ==========================
+
+          hasPermission("security.view") && {
+            key: "/security-logs",
+            icon: <FileSearchOutlined />,
+            label: "Security Logs",
+          },
+
+          // ==========================
+          // Staff
+          // ==========================
+
+          (
+            hasPermission("staff.users.view") ||
+            hasPermission("staff.roles.view") ||
+            hasPermission(
+              "staff.job-scheduler.view"
+            )
+          ) && {
+            key: "staff",
+            icon: <TeamOutlined />,
+            label: "Staff",
+
+            children: (
+              [
+                // --------------------------
+                // Users
+                // --------------------------
+
+                hasPermission(
+                  "staff.users.view"
+                ) && {
+                  key: "/users",
+                  icon: <UserOutlined />,
+                  label: "Users",
+                },
+
+                // --------------------------
+                // Roles
+                // --------------------------
+
+                hasPermission(
+                  "staff.roles.view"
+                ) && {
+                  key: "/roles",
+                  icon: <AppstoreOutlined />,
+                  label: "Roles",
+                },
+                  // --------------------------
+                // Settings
+                // --------------------------
+
+                hasPermission("staff.job-scheduler.view") && {
+                key: "/job-scheduler",
+                icon: <ScheduleOutlined />,
+                label: "Job Scheduler",
               },
-            ].filter(Boolean) as ItemType[]
-          ),
-        },
+              
+              ].filter(Boolean) as ItemType[]
+            ),
+          },
 
-        (hasPermission("staff.users.view") || hasPermission("staff.roles.view")) && {
-          key: "staff",
-          icon: <TeamOutlined />,
-          label: "Staff",
+          // ==========================
+          // Existing Settings
+          // ==========================
 
-          children: (
-            [
-              hasPermission("staff.users.view") && {
-                key: "/users",
-                icon: <UserOutlined />,
-                label: "Users",
-              },
+          hasPermission(
+            "settings.approval-settings.view"
+          ) && {
+            key: "settings",
+            icon: <SettingOutlined />,
+            label: "Settings",
 
-              hasPermission("staff.roles.view") && {
-                key: "/roles",
-                icon: <AppstoreOutlined />,
-                label: "Roles",
-              },
-            ].filter(Boolean) as ItemType[]
-          ),
-        },
+            children: (
+              [
+                hasPermission(
+                  "settings.approval-settings.view"
+                ) && {
+                  key:
+                    "/settings/approval-settings",
+                  icon: <AuditOutlined />,
+                  label: "Approval Settings",
+                },
+              ].filter(Boolean) as ItemType[]
+            ),
+          },
 
-        (hasPermission("master-data.vendor.view") ||
-          hasPermission("master-data.supplier.view") ||
-          hasPermission("master-data.contractor.view") ||
-          hasPermission("master-data.consultant.view") ||
-          hasPermission("master-data.customer.view")) && {
-          key: "master-data",
-          icon: <DatabaseOutlined />,
-          label: "Master Data",
+          // ==========================
+          // Master Data
+          // ==========================
 
-          children: (
-            [
-              hasPermission("master-data.vendor.view") && {
-                key: "/master-data/vendors",
-                icon: <ShopOutlined />,
-                label: "Vendor",
-              },
+          (
+            hasPermission(
+              "master-data.vendor.view"
+            ) ||
+            hasPermission(
+              "master-data.supplier.view"
+            ) ||
+            hasPermission(
+              "master-data.contractor.view"
+            ) ||
+            hasPermission(
+              "master-data.consultant.view"
+            ) ||
+            hasPermission(
+              "master-data.customer.view"
+            )
+          ) && {
+            key: "master-data",
+            icon: <DatabaseOutlined />,
+            label: "Master Data",
 
-              hasPermission("master-data.supplier.view") && {
-                key: "/master-data/suppliers",
-                icon: <InboxOutlined />,
-                label: "Supplier",
-              },
+            children: (
+              [
+                hasPermission(
+                  "master-data.vendor.view"
+                ) && {
+                  key: "/master-data/vendors",
+                  icon: <ShopOutlined />,
+                  label: "Vendor",
+                },
 
-              hasPermission("master-data.contractor.view") && {
-                key: "/master-data/contractors",
-                icon: <ToolOutlined />,
-                label: "Contractor",
-              },
+                hasPermission(
+                  "master-data.supplier.view"
+                ) && {
+                  key:
+                    "/master-data/suppliers",
+                  icon: <InboxOutlined />,
+                  label: "Supplier",
+                },
 
-              hasPermission("master-data.consultant.view") && {
-                key: "/master-data/consultants",
-                icon: <SolutionOutlined />,
-                label: "Consultant",
-              },
+                hasPermission(
+                  "master-data.contractor.view"
+                ) && {
+                  key:
+                    "/master-data/contractors",
+                  icon: <ToolOutlined />,
+                  label: "Contractor",
+                },
 
-              hasPermission("master-data.customer.view") && {
-                key: "/master-data/customers",
-                icon: <SmileOutlined />,
-                label: "Customer",
-              },
-            ].filter(Boolean) as ItemType[]
-          ),
-        },
-      ]
-    : []),
-].filter(Boolean) as ItemType[];
+                hasPermission(
+                  "master-data.consultant.view"
+                ) && {
+                  key:
+                    "/master-data/consultants",
+                  icon: <SolutionOutlined />,
+                  label: "Consultant",
+                },
+
+                hasPermission(
+                  "master-data.customer.view"
+                ) && {
+                  key:
+                    "/master-data/customers",
+                  icon: <SmileOutlined />,
+                  label: "Customer",
+                },
+              ].filter(Boolean) as ItemType[]
+            ),
+          },
+        ]
+      : [],
+  ].filter(Boolean) as ItemType[];
 
   // ==========================
   // User Dropdown
   // ==========================
 
-const dropdownItems: MenuProps["items"] = [
-  {
-    key: "userinfo",
-    disabled: true,
-    label: (
-      <div style={{ minWidth: 220 }}>
-        <Text strong>{user?.name}</Text>
-        <br />
-        <Text type="secondary">{user?.email}</Text>
-      </div>
-    ),
-  },
+  const dropdownItems: MenuProps["items"] = [
+    {
+      key: "userinfo",
+      disabled: true,
 
-  {
-    type: "divider",
-  },
+      label: (
+        <div
+          style={{
+            minWidth: 220,
+          }}
+        >
+          <Text strong>
+            {user?.name}
+          </Text>
 
-  ...(!isSuperAdmin
-    ? [
-        {
-          key: "profile",
-          icon: <EditOutlined />,
-          label: "Edit Profile",
-          onClick: () => navigate("/profile"),
-        },
-      ]
-    : []),
+          <br />
 
-  {
-    key: "logout",
-    icon: <LogoutOutlined />,
-    danger: true,
-    label: "Logout",
-    onClick: handleLogout,
-  },
-];
+          <Text type="secondary">
+            {user?.email}
+          </Text>
+        </div>
+      ),
+    },
+
+    {
+      type: "divider",
+    },
+
+    ...(!isSuperAdmin
+      ? [
+          {
+            key: "profile",
+            icon: <EditOutlined />,
+            label: "Edit Profile",
+
+            onClick: () =>
+              navigate("/profile"),
+          },
+        ]
+      : []),
+
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      danger: true,
+      label: "Logout",
+
+      onClick: handleLogout,
+    },
+  ];
 
   return (
     <Layout
@@ -258,6 +459,10 @@ const dropdownItems: MenuProps["items"] = [
         minHeight: "100vh",
       }}
     >
+      {/* ==========================
+          Sidebar
+      ========================== */}
+
       <Sider
         theme="dark"
         width={260}
@@ -288,13 +493,17 @@ const dropdownItems: MenuProps["items"] = [
         <Menu
           theme="dark"
           mode="inline"
+
           selectedKeys={[
             location.pathname,
           ]}
+
           defaultOpenKeys={
             getOpenKeys()
           }
+
           items={menuItems}
+
           onClick={({ key }) => {
             if (
               key.startsWith("/")
@@ -305,7 +514,13 @@ const dropdownItems: MenuProps["items"] = [
         />
       </Sider>
 
+      {/* ==========================
+          Main Layout
+      ========================== */}
+
       <Layout>
+        {/* Header */}
+
         <Header
           style={{
             background: "#fff",
@@ -330,9 +545,7 @@ const dropdownItems: MenuProps["items"] = [
                   cursor: "pointer",
                 }}
                 onClick={() =>
-                  setCollapsed(
-                    false,
-                  )
+                  setCollapsed(false)
                 }
               />
             ) : (
@@ -342,9 +555,7 @@ const dropdownItems: MenuProps["items"] = [
                   cursor: "pointer",
                 }}
                 onClick={() =>
-                  setCollapsed(
-                    true,
-                  )
+                  setCollapsed(true)
                 }
               />
             )}
@@ -361,12 +572,9 @@ const dropdownItems: MenuProps["items"] = [
 
           <Dropdown
             menu={{
-              items:
-                dropdownItems,
+              items: dropdownItems,
             }}
-            trigger={[
-              "click",
-            ]}
+            trigger={["click"]}
             placement="bottomRight"
           >
             <Space
@@ -379,7 +587,9 @@ const dropdownItems: MenuProps["items"] = [
                 icon={
                   <UserOutlined />
                 }
-                src={getFileUrl(user?.profilePicture)}
+                src={getFileUrl(
+                  user?.profilePicture
+                )}
               />
 
               {!collapsed && (
@@ -390,6 +600,8 @@ const dropdownItems: MenuProps["items"] = [
             </Space>
           </Dropdown>
         </Header>
+
+        {/* Content */}
 
         <Content
           style={{

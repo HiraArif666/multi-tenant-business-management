@@ -6,7 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { CompaniesModule } from './companies/companies.module';
 import { BusinessUnitsModule } from './business-units/business-units.module';
-import { CompanyTypesModule } from './company-types/company-types.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
 import { FilesModule } from './files/files.module';
@@ -16,14 +15,17 @@ import { SettingsModule } from './settings/settings.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AuditContextInterceptor } from './audit-log/audit-context.interceptor';
-
+import { ImportsModule } from './imports/imports.module';
+import { SecurityLogModule } from './security-log/security-log.module';
+import { ReportsModule } from './reports/reports.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { JobSchedulerModule } from './jobschedule/job-scheduler.module';
 
 @Module({
   imports: [
     DatabaseModule,
     AuthModule,
     BusinessUnitsModule,
-    CompanyTypesModule,
     CompaniesModule,
     RolesModule,
     UsersModule,
@@ -33,6 +35,11 @@ import { AuditContextInterceptor } from './audit-log/audit-context.interceptor';
     SettingsModule,
     AuditLogModule,
     DashboardModule,
+    ImportsModule,
+    SecurityLogModule,
+    ReportsModule,
+    ScheduleModule.forRoot(),
+    JobSchedulerModule,
   ],
   controllers: [AppController],
   providers: [

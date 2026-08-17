@@ -244,9 +244,17 @@ export class CompaniesService {
       companyTypeId,
     };
 
+    let paranoid = true;
+
     if (query.status === 'inactive') {
-      where.isActive = false;
-    } else if (query.status !== 'all') {
+      paranoid = false;
+      where[Op.or] = [
+        { isActive: false },
+        { deletedAt: { [Op.ne]: null } },
+      ];
+    } else if (query.status === 'all') {
+      paranoid = false;
+    } else {
       where.isActive = true;
     }
 
@@ -263,6 +271,7 @@ export class CompaniesService {
           limit,
           offset,
           order: [['createdAt', 'DESC']],
+          paranoid,
 
           attributes: {
             include: [
@@ -452,8 +461,8 @@ export class CompaniesService {
     await company.update({
       isActive: false,
       deletedBy: user.id,
-      deletedAt: new Date(),
     });
+    await company.destroy();
 
     return {
       success: true,

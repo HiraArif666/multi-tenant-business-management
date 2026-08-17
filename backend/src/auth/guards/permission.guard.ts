@@ -20,7 +20,7 @@ export class PermissionGuard implements CanActivate {
   async canActivate(
     context: ExecutionContext,
   ): Promise<boolean> {
-    const requiredPermission = this.reflector.get<string>(
+    const requiredPermission = this.reflector.get<string | string[]>(
       PERMISSION_KEY,
       context.getHandler(),
     );
@@ -30,11 +30,19 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
+    const requiredPermissions = Array.isArray(requiredPermission)
+      ? requiredPermission
+      : [requiredPermission];
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
     if (!user) {
       throw new ForbiddenException('Unauthorized');
+    }
+
+    if (user.role === 'superadmin') {
+      return true;
     }
 
     // =====================================
@@ -101,7 +109,9 @@ export class PermissionGuard implements CanActivate {
       .filter(Boolean);
 
     if (
-      !permissions.includes(requiredPermission)
+      !requiredPermissions.some((permission) =>
+        permissions.includes(permission),
+      )
     ) {
       throw new ForbiddenException(
         'Permission denied',

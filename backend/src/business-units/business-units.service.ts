@@ -101,8 +101,19 @@ export class BusinessUnitsService {
 
     const where: any = {};
 
-    where.isActive =
-      query.status === 'false' ? false : true;
+    let paranoid = true;
+
+    if (query.status === 'inactive' || query.status === 'false') {
+      paranoid = false;
+      where[Op.or] = [
+        { isActive: false },
+        { deletedAt: { [Op.ne]: null } },
+      ];
+    } else if (query.status === 'all') {
+      paranoid = false;
+    } else {
+      where.isActive = true;
+    }
 
     if (query.search) {
       where.name = {
@@ -114,6 +125,7 @@ export class BusinessUnitsService {
       await this.databaseService.BusinessUnit.findAndCountAll(
         {
           where,
+          paranoid,
 
           attributes: {
             include: [
@@ -290,8 +302,8 @@ async findOne(id: number, user: any) {
     await businessUnit.update({
       isActive: false,
       deletedBy: adminUser.id,
-      deletedAt: new Date(),
     });
+    await businessUnit.destroy();
 
     return {
       success: true,

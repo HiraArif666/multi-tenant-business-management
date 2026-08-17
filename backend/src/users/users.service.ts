@@ -12,12 +12,47 @@ import { Op } from 'sequelize';
 import { DatabaseService } from '../database/database.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { SecurityLogService } from '../security-log/security-log.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly databaseService: DatabaseService,
+    private readonly securityLogService: SecurityLogService,
   ) {}
+
+  async remove(id: number, adminUser: any) {
+    const businessUnitId =
+      adminUser.role === 'superadmin'
+        ? adminUser.selectedBusinessUnitId
+        : adminUser.businessUnitId;
+
+    const user = await this.databaseService.User.findOne({
+      where: {
+        id,
+        businessUnitId,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.databaseService.UserRole.destroy({
+      where: { userId: id },
+    });
+
+    await user.update({
+      isActive: false,
+      deletedBy: adminUser.id,
+    });
+    await user.destroy();
+
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    };
+  }
 
 async findAll(
   query: any,
@@ -42,10 +77,18 @@ async findAll(
     businessUnitId,
   };
 
+  let paranoid = true;
+
   // Status filter: 'active' (default), 'inactive', or 'all'
   if (query.status === 'inactive') {
-    where.isActive = false;
-  } else if (query.status !== 'all') {
+    paranoid = false;
+    where[Op.or] = [
+      { isActive: false },
+      { deletedAt: { [Op.ne]: null } },
+    ];
+  } else if (query.status === 'all') {
+    paranoid = false;
+  } else {
     where.isActive = true;
   }
 
@@ -65,6 +108,7 @@ async findAll(
       limit,
       offset,
       order: [['createdAt', 'DESC']],
+      paranoid,
     });
 
   return {
@@ -229,6 +273,21 @@ async update(
     updatedBy: adminUser.id,
   });
 
+  if (password) {
+    await this.securityLogService.create(
+      'password_changed',
+      {
+        userId: user.id,
+        username: user.username,
+        businessUnitId: user.businessUnitId,
+        details: {
+          changedBy: 'admin',
+          adminId: adminUser.id,
+        },
+      },
+    );
+  }
+
   if (roleIds && Array.isArray(roleIds)) {
     await this.databaseService.UserRole.destroy({
       where: { userId: id },
@@ -246,45 +305,6 @@ async update(
     success: true,
     message: 'User updated successfully',
     data: user,
-  };
-}
-
-async remove(
-  id: number,
-  adminUser: any,
-) {
-  const where: any = {
-    id,
-  };
-
-  if (adminUser.role === 'superadmin') {
-    where.businessUnitId =
-      adminUser.selectedBusinessUnitId;
-  } else {
-    where.businessUnitId =
-      adminUser.businessUnitId;
-  }
-
-  const user =
-    await this.databaseService.User.findOne({
-      where,
-    });
-
-  if (!user) {
-    throw new NotFoundException(
-      'User not found',
-    );
-  }
-
-  await user.update({
-    isActive: false,
-    deletedBy: adminUser.id,
-    deletedAt: new Date(),
-  });
-
-  return {
-    success: true,
-    message: 'User deleted successfully',
   };
 }
 
@@ -356,6 +376,20 @@ async remove(
     }
 
     await user.update(updateData);
+
+    if (data.password) {
+      await this.securityLogService.create(
+        'password_changed',
+        {
+          userId: user.id,
+          username: user.username,
+          businessUnitId: user.businessUnitId,
+          details: {
+            changedBy: 'self',
+          },
+        },
+      );
+    }
 
     const { password, ...safeUser } = user.toJSON();
 

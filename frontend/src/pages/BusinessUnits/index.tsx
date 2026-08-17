@@ -27,7 +27,7 @@ export default function BusinessUnits() {
     page: 1,
     limit: 100,
     search: "",
-    status: true,
+    status: "active",
   });
 
   const { data, isLoading } = useBusinessUnits(filters);
@@ -120,7 +120,7 @@ export default function BusinessUnits() {
             page: 1,
             limit: 100,
             search: "",
-            status: true,
+            status: "active",
           })
         }
       />

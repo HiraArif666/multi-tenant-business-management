@@ -10,6 +10,8 @@ import * as crypto from 'crypto';
 import { Op } from 'sequelize';
 import { DatabaseService } from '../database/database.service';
 import { MailService } from '../mail/mail.service';
+import { getAuditContext } from '../audit-log/audit-context';
+import { SecurityLogService } from '../security-log/security-log.service';
 
 @Injectable()
 export class AuthService {
@@ -19,9 +21,18 @@ export class AuthService {
   private readonly normalExpiry = '8h';
   private readonly rememberExpiry = '30d';
 
+  private readonly maxFailedAttempts = 5;
+  private readonly failedAttemptWindowMinutes = 15;
+  private readonly lockoutDurationMinutes = 15;
+  private readonly suspiciousIpFailureThreshold = 10;
+  private readonly suspiciousIpWindowMinutes = 15;
+  private readonly genericAuthError =
+    'Invalid credentials';
+
   constructor(
     private databaseService: DatabaseService,
     private readonly mailService: MailService,
+    private readonly securityLogService: SecurityLogService,
   ) {}
 
   // =====================================
@@ -101,6 +112,53 @@ export class AuthService {
   // LOGIN
   // =====================================
 
+  private getLockMessage(lockedUntil: Date) {
+    const minutesLeft = Math.max(
+      1,
+      Math.ceil(
+        (lockedUntil.getTime() - Date.now()) /
+          60000,
+      ),
+    );
+
+    return `Account temporarily locked. Try again in ${minutesLeft} minute${
+      minutesLeft === 1 ? '' : 's'
+    }.`;
+  }
+
+  private async maybeRecordIpSuspiciousActivity() {
+    const ctx = getAuditContext();
+    if (!ctx?.ipAddress) {
+      return;
+    }
+
+    const failureCount =
+      await this.securityLogService.countFailedAttemptsByIp(
+        ctx.ipAddress,
+        this.suspiciousIpWindowMinutes,
+      );
+
+    if (
+      failureCount >=
+        this.suspiciousIpFailureThreshold &&
+      !(await this.securityLogService.hasRecentSuspiciousActivity(
+        ctx.ipAddress,
+        this.suspiciousIpWindowMinutes,
+      ))
+    ) {
+      await this.securityLogService.create(
+        'suspicious_activity',
+        {
+          details: {
+            reason:
+              'Multiple failed login attempts from IP',
+            failedAttempts: failureCount,
+          },
+        },
+      );
+    }
+  }
+
   async login(
     username: string,
     password: string,
@@ -114,12 +172,39 @@ export class AuthService {
         where: {
           username,
         },
-        raw: true,
       });
 
     if (!user) {
+      await this.securityLogService.create(
+        'login_failed',
+        {
+          username,
+        },
+      );
+      await this.maybeRecordIpSuspiciousActivity();
       throw new UnauthorizedException(
-        'Invalid credentials',
+        this.genericAuthError,
+      );
+    }
+
+    const now = new Date();
+
+    if (
+      user.lockedUntil &&
+      new Date(user.lockedUntil) > now
+    ) {
+      await this.securityLogService.create(
+        'login_failed',
+        {
+          userId: user.id,
+          username: user.username,
+          businessUnitId: user.businessUnitId,
+        },
+      );
+      throw new UnauthorizedException(
+        this.getLockMessage(
+          new Date(user.lockedUntil),
+        ),
       );
     }
 
@@ -130,10 +215,109 @@ export class AuthService {
       );
 
     if (!validPassword) {
+      await this.securityLogService.create(
+        'login_failed',
+        {
+          userId: user.id,
+          username: user.username,
+          businessUnitId: user.businessUnitId,
+        },
+      );
+
+      const failedCount =
+        await this.securityLogService.countFailedAttemptsForUser(
+          user.id,
+          user.username,
+          this.failedAttemptWindowMinutes,
+        );
+
+      const updates: any = {
+        failedLoginAttempts: failedCount,
+      };
+
+      if (failedCount >= this.maxFailedAttempts) {
+        const lockedUntil = new Date(
+          Date.now() +
+            this.lockoutDurationMinutes *
+              60 *
+              1000,
+        );
+        updates.lockedUntil = lockedUntil;
+
+        await user.update(updates);
+
+        await this.securityLogService.create(
+          'account_locked',
+          {
+            userId: user.id,
+            username: user.username,
+            businessUnitId: user.businessUnitId,
+            details: {
+              failedAttempts: failedCount,
+              lockoutMinutes:
+                this.lockoutDurationMinutes,
+            },
+          },
+        );
+
+        throw new UnauthorizedException(
+          this.getLockMessage(lockedUntil),
+        );
+      }
+
+      await user.update(updates);
+      await this.maybeRecordIpSuspiciousActivity();
+
       throw new UnauthorizedException(
-        'Invalid credentials',
+        this.genericAuthError,
       );
     }
+
+    const ctx = getAuditContext();
+    const ipAddress = ctx?.ipAddress ?? null;
+
+    if (
+      ipAddress &&
+      (await this.securityLogService.hasPreviousSuccessfulLoginFromOtherIp(
+        user.id,
+        ipAddress,
+      ))
+    ) {
+      await this.securityLogService.create(
+        'suspicious_activity',
+        {
+          userId: user.id,
+          username: user.username,
+          businessUnitId: user.businessUnitId,
+          details: {
+            reason:
+              'Successful login from a new IP address',
+            ipAddress,
+            userAgent: ctx?.userAgent,
+          },
+        },
+      );
+
+      await this.mailService.sendSuspiciousLoginAlert(
+        user.email,
+        ipAddress,
+        ctx?.userAgent ?? null,
+      );
+    }
+
+    await this.securityLogService.create(
+      'login_success',
+      {
+        userId: user.id,
+        username: user.username,
+        businessUnitId: user.businessUnitId,
+      },
+    );
+
+    await user.update({
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
 
     const expiresIn = rememberMe
       ? this.rememberExpiry
@@ -204,7 +388,19 @@ const token = jwt.sign(
 
     let permissions: string[] = [];
 
-    if (roleIds.length) {
+    if (user.role === 'superadmin') {
+      const allPermissions = await this.databaseService.Permission.findAll({
+        attributes: ['permissionKey'],
+      });
+
+      permissions = Array.from(
+        new Set(
+          allPermissions
+            .map((permission: any) => permission.permissionKey)
+            .filter(Boolean),
+        ),
+      );
+    } else if (roleIds.length) {
       const rolePermissions =
         await this.databaseService.RolePermission.findAll(
           {
@@ -279,7 +475,7 @@ const token = jwt.sign(
 // Logout
 // ==========================
 
-async logout(token: string) {
+async logout(token: string, user?: any) {
   const loginToken =
     await this.databaseService.LoginToken.findOne({
       where: {
@@ -293,6 +489,14 @@ async logout(token: string) {
       success: true,
       message: 'Already logged out',
     };
+  }
+
+  if (user) {
+    await this.securityLogService.create('logout', {
+      userId: user.id,
+      username: user.username,
+      businessUnitId: user.businessUnitId,
+    });
   }
 
   await loginToken.update({
@@ -533,9 +737,23 @@ async validateToken(token: string) {
       },
     );
 
+    await this.securityLogService.create(
+      'password_reset',
+      {
+        userId: user.id,
+        username: user.username,
+        businessUnitId: user.businessUnitId,
+        details: {
+          changedBy: 'reset-link',
+        },
+      },
+    );
+
     return {
       success: true,
       message: 'Password reset successfully',
     };
   }
 }
+
+  

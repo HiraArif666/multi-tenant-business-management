@@ -15,7 +15,6 @@ import RoleForm from "../pages/Roles/RoleForm";
 import ProtectedRoute from "./ProtectedRoute";
 import AppLayout from "../components/Layout/AppLayout";
 
-
 import CompanyList from "../pages/MasterData/CompanyList";
 import CompanyForm from "../pages/MasterData/CompanyForm";
 
@@ -27,14 +26,33 @@ import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 
 import AuditLog from "../pages/AuditLog";
+import SecurityLog from "../pages/SecurityLog";
+import ImportPage from "../pages/Import";
 
-const NotFound = () => <div>404 - Page Not Found</div>;
+import ReportsPage from "../pages/Reports";
+import ReportViewer from "../pages/Reports/ReportViewer";
+
+import JobScheduler from "../pages/JobScheduler";
+import JobScheduleForm from "../pages/JobScheduler/JobScheduleForm";
+
+
+const NotFound = () => (
+  <div>404 - Page Not Found</div>
+);
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
-       
+
+      {/* =========================
+          PUBLIC ROUTES
+      ========================== */}
+
+      <Route
+        path="/"
+        element={<Login />}
+      />
+
       <Route
         path="/forgot-password"
         element={<ForgotPassword />}
@@ -45,6 +63,11 @@ export default function AppRoutes() {
         element={<ResetPassword />}
       />
 
+
+      {/* =========================
+          PROTECTED ROUTES
+      ========================== */}
+
       <Route
         element={
           <ProtectedRoute>
@@ -52,16 +75,79 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
+
+        {/* Dashboard */}
+
         <Route
           path="/dashboard"
           element={<Dashboard />}
         />
-        
+
+
+        {/* =========================
+            IMPORT
+        ========================== */}
+
+        <Route
+          path="/import"
+          element={<ImportPage />}
+        />
+
+
+        {/* =========================
+            REPORTS
+        ========================== */}
+
+        <Route
+          path="/reports"
+          element={<ReportsPage />}
+        />
+
+        <Route
+          path="/reports/view/:id"
+          element={<ReportViewer />}
+        />
+
+
+        {/* =========================
+            JOB SCHEDULER
+        ========================== */}
+
+        <Route
+          path="/settings/job-scheduler"
+          element={<JobScheduler />}
+        />
+
+        <Route
+          path="/settings/job-scheduler/new"
+          element={<JobScheduleForm />}
+        />
+
+        <Route
+          path="/settings/job-scheduler/edit/:id"
+          element={<JobScheduleForm />}
+        />
+
+
+        {/* =========================
+            AUDIT / SECURITY
+        ========================== */}
+
         <Route
           path="/audit-log"
           element={<AuditLog />}
         />
-        
+
+        <Route
+          path="/security-logs"
+          element={<SecurityLog />}
+        />
+
+
+        {/* =========================
+            EXPENSES
+        ========================== */}
+
         <Route
           path="/expenses"
           element={<Expenses />}
@@ -77,11 +163,21 @@ export default function AppRoutes() {
           element={<ExpenseForm />}
         />
 
+
+        {/* =========================
+            SETTINGS
+        ========================== */}
+
         <Route
           path="/settings/approval-settings"
           element={<ApprovalSettings />}
         />
-        
+
+
+        {/* =========================
+            BUSINESS UNITS
+        ========================== */}
+
         <Route
           path="/business-units"
           element={<BusinessUnits />}
@@ -97,15 +193,30 @@ export default function AppRoutes() {
           element={<BusinessUnitForm />}
         />
 
+
+        {/* =========================
+            COMPANY TYPES
+        ========================== */}
+
         <Route
           path="/company-types"
           element={<CompanyTypes />}
         />
 
+
+        {/* =========================
+            COMPANIES
+        ========================== */}
+
         <Route
           path="/companies"
           element={<Companies />}
         />
+
+
+        {/* =========================
+            USERS
+        ========================== */}
 
         <Route
           path="/users"
@@ -121,6 +232,11 @@ export default function AppRoutes() {
           path="/users/edit/:id"
           element={<UserForm />}
         />
+
+
+        {/* =========================
+            ROLES
+        ========================== */}
 
         <Route
           path="/roles"
@@ -138,6 +254,25 @@ export default function AppRoutes() {
         />
         
         <Route
+          path="/job-scheduler"
+          element={<JobScheduler />}
+        />
+
+        <Route
+          path="/job-scheduler/new"
+          element={<JobScheduleForm />}
+        />
+
+        <Route
+          path="/job-scheduler/edit/:id"
+          element={<JobScheduleForm />}
+        />
+
+        {/* =========================
+            MASTER DATA
+        ========================== */}
+
+        <Route
           path="/master-data/:type"
           element={<CompanyList />}
         />
@@ -151,19 +286,29 @@ export default function AppRoutes() {
           path="/master-data/:type/edit/:id"
           element={<CompanyForm />}
         />
-        
+
+
+        {/* =========================
+            PROFILE
+        ========================== */}
+
         <Route
           path="/profile"
           element={<Profile />}
         />
+
       </Route>
+
+
+      {/* =========================
+          404
+      ========================== */}
 
       <Route
         path="*"
         element={<NotFound />}
       />
-    </Routes>
 
-    
+    </Routes>
   );
 }

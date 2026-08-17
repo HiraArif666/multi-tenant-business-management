@@ -118,6 +118,20 @@ console.log("Role ID:", role.id);
       businessUnitId,
     };
 
+    let paranoid = true;
+
+    if (query.status === 'inactive' || query.status === 'false') {
+      paranoid = false;
+      where[Op.or] = [
+        { isActive: false },
+        { deletedAt: { [Op.ne]: null } },
+      ];
+    } else if (query.status === 'all') {
+      paranoid = false;
+    } else {
+      where.isActive = true;
+    }
+
     if (query.search) {
       where.name = {
         [Op.iLike]: `%${query.search}%`,
@@ -127,6 +141,7 @@ console.log("Role ID:", role.id);
     const { rows, count } =
       await this.databaseService.Role.findAndCountAll({
         where,
+        paranoid,
 
 include: [
   {
@@ -297,7 +312,6 @@ async update(
         where: {
           id,
           businessUnitId,
-          isActive: true,
         },
       });
 
@@ -310,8 +324,8 @@ async update(
     await role.update({
       isActive: false,
       deletedBy: user.id,
-      deletedAt: new Date(),
     });
+    await role.destroy();
 
     return {
       success: true,

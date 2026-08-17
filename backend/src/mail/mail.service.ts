@@ -42,4 +42,60 @@ export class MailService {
       );
     }
   }
+
+  async sendSuspiciousLoginAlert(
+    to: string,
+    ipAddress: string,
+    userAgent: string | null,
+  ) {
+    try {
+      await this.transporter.sendMail({
+        from: `"Multi-Tenant BM" <${process.env.GMAIL_USER}>`,
+        to,
+        subject: 'Suspicious login detected',
+        html: `
+          <p>We detected a login from a device or IP address we don't recognize.</p>
+          <p><strong>IP address:</strong> ${ipAddress}</p>
+          <p><strong>Device / browser:</strong> ${userAgent ?? 'Unknown'}</p>
+          <p>If this was you, no action is needed. If you did not sign in, please reset your password immediately.</p>
+        `,
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to send suspicious login alert',
+        error as Error,
+      );
+    }
+  }
+
+  async sendScheduledReportEmail(
+    recipients: string[],
+    reportName: string,
+    excelBuffer: Buffer,
+  ) {
+    if (!recipients.length) return;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Multi-Tenant BM" <${process.env.GMAIL_USER}>`,
+        to: recipients.join(','),
+        subject: `Scheduled Report: ${reportName}`,
+        html: `
+          <p>Attached is your scheduled report: <strong>${reportName}</strong>.</p>
+          <p>This is an automated email sent by your report schedule.</p>
+        `,
+        attachments: [
+          {
+            filename: `${reportName}.xlsx`,
+            content: excelBuffer,
+          },
+        ],
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to send scheduled report email',
+        error as Error,
+      );
+    }
+  }
 }

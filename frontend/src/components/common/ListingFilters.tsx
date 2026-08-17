@@ -18,7 +18,7 @@ export default function ListingFilters({
   const handleReset = () => {
     form.setFieldsValue({
       search: "",
-      status: true,
+      status: "active",
     });
 
     onClear();
@@ -30,7 +30,7 @@ export default function ListingFilters({
       layout="vertical"
       initialValues={{
         search: "",
-        status: true,
+        status: "active",
       }}
       onFinish={onSearch}
     >
@@ -56,11 +56,15 @@ export default function ListingFilters({
               options={[
                 {
                   label: "Active",
-                  value: true,
+                  value: "active",
                 },
                 {
                   label: "Inactive",
-                  value: false,
+                  value: "inactive",
+                },
+                {
+                  label: "All",
+                  value: "all",
                 },
               ]}
             />

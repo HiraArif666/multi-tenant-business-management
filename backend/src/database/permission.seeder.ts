@@ -302,6 +302,20 @@ export async function seedPermissions(
       permissionKey: 'master-data.customer.delete',
     },
     
+    // Import
+    {
+      module: 'Import',
+      subModule: null,
+      action: 'View',
+      permissionKey: 'import.view',
+    },
+    {
+      module: 'Import',
+      subModule: null,
+      action: 'Execute',
+      permissionKey: 'import.execute',
+    },
+
     // Expense
     {
       module: 'Expense',
@@ -362,7 +376,71 @@ export async function seedPermissions(
       action: 'View',
       permissionKey: 'audit-log.view',
     },
-
+    {
+      module: 'Security',
+      subModule: null,
+      action: 'View',
+      permissionKey: 'security.view',
+    },
+    
+    // Reports
+    {
+      module: 'Reports',
+      subModule: null,
+      action: 'View',
+      permissionKey: 'reports.view',
+    },
+    {
+      module: 'Reports',
+      subModule: null,
+      action: 'Add',
+      permissionKey: 'reports.add',
+    },
+    {
+      module: 'Reports',
+      subModule: null,
+      action: 'Edit',
+      permissionKey: 'reports.edit',
+    },
+    {
+      module: 'Reports',
+      subModule: null,
+      action: 'Delete',
+      permissionKey: 'reports.delete',
+    },
+    {
+      module: 'Reports',
+      subModule: null,
+      action: 'Export',
+      permissionKey: 'reports.export',
+    },
+    
+    // Staff -> Job Scheduler
+    {
+      module: 'Staff',
+      subModule: 'Job Scheduler',
+      action: 'View',
+      permissionKey: 'staff.job-scheduler.view',
+    },
+    {
+      module: 'Staff',
+      subModule: 'Job Scheduler',
+      action: 'Add',
+      permissionKey: 'staff.job-scheduler.add',
+    },
+    {
+      module: 'Staff',
+      subModule: 'Job Scheduler',
+      action: 'Edit',
+      permissionKey: 'staff.job-scheduler.edit',
+    },
+    {
+      module: 'Staff',
+      subModule: 'Job Scheduler',
+      action: 'Delete',
+      permissionKey: 'staff.job-scheduler.delete',
+    },
+    
     // Profile
     {
       module: 'Profile',

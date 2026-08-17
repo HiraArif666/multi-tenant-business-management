@@ -137,11 +137,16 @@ export default function Expenses() {
     {
       title: "Status",
       dataIndex: "status",
-      render: (value: string) => (
-        <Tag color={STATUS_COLORS[value]}>
-          {value.toUpperCase()}
-        </Tag>
-      ),
+      render: (value: string, record: any) => {
+        if (record.deletedAt) {
+          return <Tag color="red">DELETED</Tag>;
+        }
+        return (
+          <Tag color={STATUS_COLORS[value]}>
+            {value?.toUpperCase()}
+          </Tag>
+        );
+      },
     },
 
     {
@@ -270,6 +275,8 @@ export default function Expenses() {
           { label: "Pending", value: "pending" },
           { label: "Approved", value: "approved" },
           { label: "Rejected", value: "rejected" },
+          { label: "Inactive / Deleted", value: "inactive" },
+          { label: "All", value: "all" },
         ]}
       />
 
