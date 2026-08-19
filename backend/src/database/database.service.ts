@@ -41,6 +41,7 @@ import {
 } from './rbac.seeder';
 import { initReportModel } from './models/report.model';
 import {initJobScheduleModel} from './models/jobschedule.model';
+import { initNotificationModel } from './models/notification.model';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ export class DatabaseService implements OnModuleInit {
   public ApprovalSetting: any;
   public ApprovalSettingApprover: any;
   public AuditLog: any;
+public Notification: any;
 
   // RBAC
   public Role: any;
@@ -103,7 +105,7 @@ export class DatabaseService implements OnModuleInit {
       this.ApprovalSetting = initApprovalSettingModel(this.sequelize);
       this.ApprovalSettingApprover = initApprovalSettingApproverModel(this.sequelize);
       this.AuditLog = initAuditLogModel(this.sequelize);
-
+this.Notification = initNotificationModel(this.sequelize);
       // RBAC Models
 
       this.Role = initRoleModel(this.sequelize);

@@ -7,6 +7,7 @@ import {
   Avatar,
   Dropdown,
   Space,
+  Divider,
 } from "antd";
 
 import {
@@ -33,6 +34,7 @@ import {
   BarChartOutlined,
   ScheduleOutlined,
 } from "@ant-design/icons";
+import { NotificationBell } from "../Notifications/NotificationBell";
 
 import {
   Outlet,
@@ -518,7 +520,7 @@ export default function AppLayout() {
           Main Layout
       ========================== */}
 
-      <Layout>
+  <Layout>
         {/* Header */}
 
         <Header
@@ -531,6 +533,7 @@ export default function AppLayout() {
             paddingInline: 24,
           }}
         >
+          {/* LEFT SECTION */}
           <div
             style={{
               display: "flex",
@@ -570,35 +573,54 @@ export default function AppLayout() {
             </Title>
           </div>
 
-          <Dropdown
-            menu={{
-              items: dropdownItems,
+          {/* RIGHT SECTION - FIXED */}
+          <Space
+            align="center"
+            size="middle"
+            style={{
+              gap: 16,
             }}
-            trigger={["click"]}
-            placement="bottomRight"
           >
-            <Space
-              style={{
-                cursor: "pointer",
-              }}
-            >
-              <Avatar
-                size={40}
-                icon={
-                  <UserOutlined />
-                }
-                src={getFileUrl(
-                  user?.profilePicture
-                )}
-              />
+            {/* NOTIFICATION BELL - STANDALONE */}
+            <NotificationBell />
 
-              {!collapsed && (
-                <Text strong>
-                  {user?.name}
-                </Text>
-              )}
-            </Space>
-          </Dropdown>
+            {/* DIVIDER */}
+            <Divider
+              type="vertical"
+              style={{
+                height: 32,
+                margin: 0,
+              }}
+            />
+
+            {/* USER AVATAR DROPDOWN */}
+            <Dropdown
+              menu={{
+                items: dropdownItems,
+              }}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
+              <Space
+                style={{
+                  cursor: "pointer",
+                }}
+              >
+                <Avatar
+                  size={40}
+                  icon={<UserOutlined />}
+                  src={getFileUrl(
+                    user?.profilePicture
+                  )}
+                />
+                {!collapsed && (
+                  <Text strong>
+                    {user?.name}
+                  </Text>
+                )}
+              </Space>
+            </Dropdown>
+          </Space>
         </Header>
 
         {/* Content */}

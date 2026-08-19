@@ -20,9 +20,11 @@ import { SecurityLogModule } from './security-log/security-log.module';
 import { ReportsModule } from './reports/reports.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobSchedulerModule } from './jobschedule/job-scheduler.module';
-
+import { NotificationModule } from './notifications/notification.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     DatabaseModule,
     AuthModule,
     BusinessUnitsModule,
@@ -40,7 +42,9 @@ import { JobSchedulerModule } from './jobschedule/job-scheduler.module';
     ReportsModule,
     ScheduleModule.forRoot(),
     JobSchedulerModule,
+    NotificationModule,
   ],
+  
   controllers: [AppController],
   providers: [
     AppService,

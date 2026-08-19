@@ -11,6 +11,13 @@ import * as ExcelJS from 'exceljs';
 import { DatabaseService } from '../database/database.service';
 import { ApprovalSettingsService } from '../settings/approval-settings.service';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ExpenseApprovedEvent,
+  ExpensePendingEvent,
+  ExpenseRejectedEvent,
+} from '../notifications/notification.events';
+
 const MODULE_NAME = 'expense';
 
 @Injectable()
@@ -18,6 +25,7 @@ export class ExpensesService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly approvalSettingsService: ApprovalSettingsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private resolveBusinessUnitId(user: any) {
@@ -181,6 +189,35 @@ export class ExpensesService {
         createdBy: user.id,
       });
 
+    // ✅ EMIT PENDING NOTIFICATION EVENT
+
+const approvalSetting =
+  await this.databaseService.ApprovalSetting.findOne({
+    where: {
+      businessUnitId,
+      moduleName: MODULE_NAME,
+    },
+  });
+
+if (approvalSetting) {
+  const approver =
+    await this.databaseService.ApprovalSettingApprover.findOne({
+      where: {
+        approvalSettingId: approvalSetting.id,
+      },
+    });
+
+  if (approver) {
+    const event = new ExpensePendingEvent(
+      businessUnitId,
+      approver.userId,
+      expense.id,
+    );
+
+    this.eventEmitter.emit('expense.pending', event);
+  }
+}
+
     return {
       success: true,
       message: 'Expense created successfully',
@@ -271,7 +308,7 @@ export class ExpensesService {
   // Approve / Reject — shared guard logic
   // ==========================
 
-private async assertCanDecide(
+  private async assertCanDecide(
     expense: any,
     businessUnitId: number,
     user: any,
@@ -329,6 +366,15 @@ private async assertCanDecide(
       updatedBy: user.id,
     });
 
+    // ✅ EMIT APPROVED NOTIFICATION EVENT
+    const event = new ExpenseApprovedEvent(
+      businessUnitId,
+      expense.createdBy,
+      expense.id,
+      user.name || user.username,
+    );
+    this.eventEmitter.emit('expense.approved', event);
+
     return {
       success: true,
       message: 'Expense approved successfully',
@@ -363,7 +409,14 @@ private async assertCanDecide(
       approvedBy: user.id,
       updatedBy: user.id,
     });
+const event = new ExpenseRejectedEvent(
+  businessUnitId,
+  expense.createdBy,
+  expense.id,
+  user.name || user.username,
+);
 
+this.eventEmitter.emit('expense.rejected', event);
     return {
       success: true,
       message: 'Expense rejected successfully',

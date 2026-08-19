@@ -72,6 +72,7 @@ export class MailService {
     recipients: string[],
     reportName: string,
     excelBuffer: Buffer,
+    filename?: string,
   ) {
     if (!recipients.length) return;
 
@@ -86,7 +87,7 @@ export class MailService {
         `,
         attachments: [
           {
-            filename: `${reportName}.xlsx`,
+            filename: filename || `${reportName}.xlsx`,
             content: excelBuffer,
           },
         ],

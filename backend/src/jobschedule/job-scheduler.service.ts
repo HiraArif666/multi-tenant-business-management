@@ -10,7 +10,11 @@ import { Op } from 'sequelize';
 import { DatabaseService } from '../database/database.service';
 import { ReportsService } from '../reports/reports.service';
 import { MailService } from '../mail/mail.service';
-import { computeNextRun } from './next-run.calculator';
+import {
+  computeNextRun,
+  calculateDateRangeForSchedule,
+  generateScheduledReportFileName,
+} from './next-run.calculator';
 
 @Injectable()
 export class JobSchedulerService {
@@ -61,10 +65,6 @@ export class JobSchedulerService {
     }
   }
 
-  // ==========================
-  // CRUD
-  // ==========================
-
   async findAll(query: any, user: any) {
     const businessUnitId =
       this.resolveBusinessUnitId(user);
@@ -83,9 +83,6 @@ export class JobSchedulerService {
         },
       );
 
-    // Attach report names + recipient names for display —
-    // done as follow-up lookups rather than a join since
-    // recipientUserIds is a JSONB array, not a real FK.
     const reportIds = [
       ...new Set(rows.map((r: any) => r.reportId)),
     ];
@@ -294,10 +291,6 @@ export class JobSchedulerService {
     };
   }
 
-  // ==========================
-  // Cron — checks every minute for due schedules
-  // ==========================
-
   @Cron(CronExpression.EVERY_MINUTE)
   async runDueSchedules() {
     const now = new Date();
@@ -329,10 +322,6 @@ export class JobSchedulerService {
       );
 
     if (report) {
-      // Runs outside any HTTP request, so there's no real logged-in
-      // user — this stand-in carries just enough (businessUnitId,
-      // non-superadmin role) for ReportsService's scoping to resolve
-      // correctly.
       const systemUser = {
         id: schedule.createdBy,
         role: 'bu-admin',
@@ -341,12 +330,32 @@ export class JobSchedulerService {
           schedule.businessUnitId,
       };
 
+      const executionDate = new Date();
+      const { startDate, endDate } =
+        calculateDateRangeForSchedule(
+          schedule.frequency,
+          executionDate,
+        );
+
+      const mergedFilters = {
+        ...report.filters,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      };
+
       const buffer =
         await this.reportsService.exportToExcel(
           report.moduleKey,
           report.columns,
-          report.filters || {},
+          mergedFilters,
           systemUser,
+        );
+
+      const filename =
+        generateScheduledReportFileName(
+          schedule.frequency,
+          report.name,
+          executionDate,
         );
 
       const recipients =
@@ -365,6 +374,7 @@ export class JobSchedulerService {
         emails,
         report.name,
         buffer,
+        filename,
       );
     } else {
       this.logger.warn(
