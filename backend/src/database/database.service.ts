@@ -77,15 +77,23 @@ public Notification: any;
   }
 
   async initialize() {
-    this.sequelize = new Sequelize({
-      database: process.env.DB_DATABASE || 'multi_tenant_db',
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres123',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      dialect: 'postgres',
-      logging: false,
-    });
+this.sequelize = new Sequelize(
+  process.env.DATABASE_URL || '',
+  {
+    dialect: 'postgres',
+    logging: false,
+
+    dialectOptions:
+      process.env.NODE_ENV === 'production'
+        ? {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
+          }
+        : undefined,
+  },
+);
 
     try {
       await this.sequelize.authenticate();

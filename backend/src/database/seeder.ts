@@ -1,44 +1,40 @@
 import * as bcrypt from 'bcrypt';
+import { DatabaseService } from './database.service';
 
 export async function seedSuperAdmin(
-  databaseService: any,
+  databaseService: DatabaseService,
 ) {
-  const existingUser =
-    await databaseService.User.findOne({
+  // ======================================
+  // Create / Find Super Admin User
+  // ======================================
+
+  const hashedPassword = await bcrypt.hash('123456', 10);
+
+  const [superAdmin, created] =
+    await databaseService.User.findOrCreate({
       where: {
-        username: 'superadmin',
+        username: 'test',
+      },
+      defaults: {
+        username: 'test',
+        email: 'test@test.com',
+        password: hashedPassword,
+        name: 'Test User',
+        role: 'superadmin',
+        businessUnitId: null,
+        companyId: null,
+        isActive: true,
       },
     });
 
-  let superAdmin = existingUser;
-
-  if (!existingUser) {
-const hashedPassword =
-  await bcrypt.hash('1234', 10);
-
-superAdmin =
-  await databaseService.User.create({
-    username: 'test',
-    email: 'test@test.com',
-    password: hashedPassword,
-    name: 'Test User',
-
-    // Temporary until role column is removed
-    role: 'superadmin',
-
-    businessUnitId: null,
-    companyId: null,
-
-    isActive: true,
-  });
-
-    console.log(
-      '✓ Super Admin user created',
-    );
+  if (created) {
+    console.log('✓ Super Admin created');
+  } else {
+    console.log('✓ Super Admin already exists');
   }
 
   // ======================================
-  // Assign Super Admin Role
+  // Find Super Admin Role
   // ======================================
 
   const superAdminRole =
@@ -55,6 +51,10 @@ superAdmin =
     return;
   }
 
+  // ======================================
+  // Assign Super Admin Role
+  // ======================================
+
   await databaseService.UserRole.findOrCreate({
     where: {
       userId: superAdmin.id,
@@ -66,7 +66,5 @@ superAdmin =
     },
   });
 
-  console.log(
-    '✓ Super Admin role assigned',
-  );
+  console.log('✓ Super Admin role assigned');
 }

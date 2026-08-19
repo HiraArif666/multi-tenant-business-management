@@ -31,11 +31,12 @@ export class LocalStorageProvider implements StorageProvider {
 
     await writeFile(join(dir, fileName), file.buffer);
 
-    return {
-      fileName,
-      url: `/uploads/${folder}/${fileName}`,
-      size: file.buffer.length,
-    };
+return {
+  fileName,
+  url: `/uploads/${folder}/${fileName}`,
+  size: file.buffer.length,
+  provider: 'local',
+};
   }
 
   async delete(

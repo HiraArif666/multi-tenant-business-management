@@ -108,7 +108,7 @@ export class FilesService {
       size: stored.size,
       folder,
       url: stored.url,
-      provider: 'local',
+      provider: stored.provider,
       uploadedBy,
     });
 

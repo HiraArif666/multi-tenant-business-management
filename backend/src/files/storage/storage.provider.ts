@@ -10,6 +10,7 @@ export interface StoredFile {
   fileName: string;
   url: string;
   size: number;
+  provider: string;
 }
 
 // Anything that can save/delete files, keyed by fileName + folder,
