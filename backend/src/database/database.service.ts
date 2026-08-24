@@ -76,11 +76,11 @@ export class DatabaseService implements OnModuleInit {
     await this.initialize();
   }
 
-  async initialize() {
+async initialize() {
     const dbUrl = process.env.DATABASE_URL;
 
-    if (dbUrl) {
-      // Connect using connection URI string
+    if (dbUrl && dbUrl.trim() !== '') {
+      // Pass URI connection string directly
       this.sequelize = new Sequelize(dbUrl, {
         dialect: 'postgres',
         logging: false,
@@ -91,26 +91,28 @@ export class DatabaseService implements OnModuleInit {
           },
         },
       });
-    } else if (process.env.DB_HOST) {
-      // Fallback to individual credentials from .env
-      this.sequelize = new Sequelize({
-        dialect: 'postgres',
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT) || 5432,
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
-        logging: false,
-        dialectOptions: {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
+    } else if (process.env.DB_HOST && process.env.DB_HOST.trim() !== '') {
+      // Pass parameters separately: (database, username, password, options)
+      this.sequelize = new Sequelize(
+        process.env.DB_DATABASE || 'neondb',
+        process.env.DB_USERNAME || 'neondb_owner',
+        process.env.DB_PASSWORD || '',
+        {
+          host: process.env.DB_HOST,
+          port: Number(process.env.DB_PORT) || 5432,
+          dialect: 'postgres',
+          logging: false,
+          dialectOptions: {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
           },
         },
-      });
+      );
     } else {
       throw new Error(
-        'Database connection configuration missing. Provide DATABASE_URL or individual DB_* variables.',
+        'Database connection failed: DATABASE_URL and DB_HOST are both missing or empty in process.env',
       );
     }
 
