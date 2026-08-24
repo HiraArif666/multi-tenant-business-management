@@ -1,19 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import express from 'express';
+import { ExpressAdapter } from '@nestjs/platform-express';
 
-export const expressApp = express();
+const server = express();
+let cachedServer: express.Express;
 
-let isAppInitialized = false;
-
-export async function setupApp(app: NestExpressApplication) {
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
+async function createNestServer(expressInstance: express.Express) {
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule,
+    new ExpressAdapter(expressInstance),
+  );
 
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || [
@@ -39,30 +39,14 @@ export async function setupApp(app: NestExpressApplication) {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
+
+  await app.init();
+  return expressInstance;
 }
 
-// Handler for Vercel Serverless execution
-export async function initializeServerless() {
-  if (!isAppInitialized) {
-    const { ExpressAdapter } = await import('@nestjs/platform-express');
-    const app = await NestFactory.create<NestExpressApplication>(
-      AppModule,
-      new ExpressAdapter(expressApp),
-    );
-    await setupApp(app);
-    await app.init();
-    isAppInitialized = true;
+export default async function handler(req: any, res: any) {
+  if (!cachedServer) {
+    cachedServer = await createNestServer(server);
   }
-  return expressApp;
-}
-
-// Local Development execution
-async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  await setupApp(app);
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
-}
-
-if (process.env.NODE_ENV !== 'production') {
-  bootstrap();
+  return cachedServer(req, res);
 }
