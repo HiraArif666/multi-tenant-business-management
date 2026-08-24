@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Sequelize } from 'sequelize';
+import * as pg from 'pg'; // Explicit import to prevent Vercel tree-shaking
 import * as dotenv from 'dotenv';
 
 import { initUserModel } from './models/user.model';
@@ -76,13 +77,14 @@ export class DatabaseService implements OnModuleInit {
     await this.initialize();
   }
 
-async initialize() {
+  async initialize() {
     const dbUrl = process.env.DATABASE_URL;
 
     if (dbUrl && dbUrl.trim() !== '') {
-      // Pass URI connection string directly
+      // Pass URI connection string directly with explicit pg dialectModule
       this.sequelize = new Sequelize(dbUrl, {
         dialect: 'postgres',
+        dialectModule: pg,
         logging: false,
         dialectOptions: {
           ssl: {
@@ -92,7 +94,7 @@ async initialize() {
         },
       });
     } else if (process.env.DB_HOST && process.env.DB_HOST.trim() !== '') {
-      // Pass parameters separately: (database, username, password, options)
+      // Pass parameters separately with explicit pg dialectModule
       this.sequelize = new Sequelize(
         process.env.DB_DATABASE || 'neondb',
         process.env.DB_USERNAME || 'neondb_owner',
@@ -101,6 +103,7 @@ async initialize() {
           host: process.env.DB_HOST,
           port: Number(process.env.DB_PORT) || 5432,
           dialect: 'postgres',
+          dialectModule: pg,
           logging: false,
           dialectOptions: {
             ssl: {
