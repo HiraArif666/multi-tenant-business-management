@@ -16,9 +16,11 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 RUN npm ci --omit=dev
+RUN npm install sequelize-cli@6.6.5
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/database ./src/database
+COPY --from=builder /app/.sequelizerc ./.sequelizerc
 
 EXPOSE 3000
 
