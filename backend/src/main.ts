@@ -1,19 +1,12 @@
+import 'pg';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import express from 'express';
-import { ExpressAdapter } from '@nestjs/platform-express';
 
-const server = express();
-let cachedServer: express.Express;
-
-async function createNestServer(expressInstance: express.Express) {
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-    new ExpressAdapter(expressInstance),
-  );
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || [
@@ -40,13 +33,7 @@ async function createNestServer(expressInstance: express.Express) {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
-  await app.init();
-  return expressInstance;
+  await app.listen(process.env.PORT || 3000, '0.0.0.0');
 }
 
-export default async function handler(req: any, res: any) {
-  if (!cachedServer) {
-    cachedServer = await createNestServer(server);
-  }
-  return cachedServer(req, res);
-}
+bootstrap();
