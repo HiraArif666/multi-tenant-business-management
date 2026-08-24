@@ -12,18 +12,14 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://192.168.1.172:5173',
-    ],
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
-  });
+app.enableCors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+    'http://localhost:5173',
+  ],
+  credentials: true,
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  allowedHeaders: ['Content-Type', 'Authorization'],
+});
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -49,7 +45,6 @@ async function bootstrap() {
     document,
   );
 
-  await app.listen(3000, '0.0.0.0');
-}
+await app.listen(process.env.PORT || 3000, '0.0.0.0');}
 
 bootstrap();
