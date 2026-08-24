@@ -40,7 +40,7 @@ import {
   seedSuperAdminRole,
 } from './rbac.seeder';
 import { initReportModel } from './models/report.model';
-import {initJobScheduleModel} from './models/jobschedule.model';
+import { initJobScheduleModel } from './models/jobschedule.model';
 import { initNotificationModel } from './models/notification.model';
 
 dotenv.config();
@@ -59,14 +59,14 @@ export class DatabaseService implements OnModuleInit {
   public ApprovalSetting: any;
   public ApprovalSettingApprover: any;
   public AuditLog: any;
-public Notification: any;
+  public Notification: any;
 
   // RBAC
   public Role: any;
   public Permission: any;
   public RolePermission: any;
   public UserRole: any;
-  
+
   public SecurityLog: any;
   SelectedBusinessUnit: any;
   public Report!: typeof import('./models/report.model').Report;
@@ -77,23 +77,42 @@ public Notification: any;
   }
 
   async initialize() {
-this.sequelize = new Sequelize(
-  process.env.DATABASE_URL || '',
-  {
-    dialect: 'postgres',
-    logging: false,
+    const dbUrl = process.env.DATABASE_URL;
 
-    dialectOptions:
-      process.env.NODE_ENV === 'production'
-        ? {
-            ssl: {
-              require: true,
-              rejectUnauthorized: false,
-            },
-          }
-        : undefined,
-  },
-);
+    if (dbUrl) {
+      // Connect using connection URI string
+      this.sequelize = new Sequelize(dbUrl, {
+        dialect: 'postgres',
+        logging: false,
+        dialectOptions: {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        },
+      });
+    } else if (process.env.DB_HOST) {
+      // Fallback to individual credentials from .env
+      this.sequelize = new Sequelize({
+        dialect: 'postgres',
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT) || 5432,
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_DATABASE,
+        logging: false,
+        dialectOptions: {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        },
+      });
+    } else {
+      throw new Error(
+        'Database connection configuration missing. Provide DATABASE_URL or individual DB_* variables.',
+      );
+    }
 
     try {
       await this.sequelize.authenticate();
@@ -113,9 +132,9 @@ this.sequelize = new Sequelize(
       this.ApprovalSetting = initApprovalSettingModel(this.sequelize);
       this.ApprovalSettingApprover = initApprovalSettingApproverModel(this.sequelize);
       this.AuditLog = initAuditLogModel(this.sequelize);
-this.Notification = initNotificationModel(this.sequelize);
-      // RBAC Models
+      this.Notification = initNotificationModel(this.sequelize);
 
+      // RBAC Models
       this.Role = initRoleModel(this.sequelize);
       this.Permission = initPermissionModel(this.sequelize);
       this.RolePermission = initRolePermissionModel(this.sequelize);
@@ -127,7 +146,6 @@ this.Notification = initNotificationModel(this.sequelize);
       // Setup Associations
       // ==========================
 
-      // initialization:
       this.JobSchedule = initJobScheduleModel(this.sequelize);
       this.setupRelationships();
 
@@ -135,27 +153,15 @@ this.Notification = initNotificationModel(this.sequelize);
       // Seed Data (ORDER MATTERS)
       // ==========================
 
-      // 1. Permissions
       await seedPermissions(this);
-
-      // 2. System Roles
       await seedRoles(this);
-
-      // 2b. Master Data Company Types
       await seedCompanyTypes(this);
-
-      // 3. Role -> Permission mapping
       await seedRolePermissions(this);
-
-      // 4. Super Admin User
       await seedSuperAdmin(this);
-
-      // 5. Assign Super Admin Role
       await seedSuperAdminRole(this);
 
       // ==========================
-      // Audit Logging (must be last — after seeding, so
-      // seed-time inserts don't get logged as "user actions")
+      // Audit Logging
       // ==========================
 
       registerAuditHooks(this.User, this.AuditLog, {
@@ -194,7 +200,6 @@ this.Notification = initNotificationModel(this.sequelize);
       });
 
       console.log('✓ Audit logging enabled');
-
       console.log('✓ Database initialized successfully');
     } catch (error) {
       console.error('✗ Database initialization failed:', error);
