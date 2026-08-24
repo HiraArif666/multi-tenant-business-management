@@ -1,14 +1,11 @@
 {
   "version": 2,
   "functions": {
-    "api/index.ts": {
+    "api/**/*.ts": {
+      "includeFiles": "node_modules/pg/**"
+    },
+    "src/main.ts": {
       "includeFiles": "node_modules/pg/**"
     }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "api/index.ts"
-    }
-  ]
+  }
 }

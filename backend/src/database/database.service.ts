@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Sequelize } from 'sequelize';
-import * as pg from 'pg'; // Explicit import to prevent Vercel tree-shaking
-import * as dotenv from 'dotenv';
+const pg = require('pg');import * as dotenv from 'dotenv';
 
 import { initUserModel } from './models/user.model';
 import { initLoginTokenModel } from './models/login-token.model';
